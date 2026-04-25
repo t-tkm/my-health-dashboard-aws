@@ -1,0 +1,20 @@
+{
+  "name": "health-dashboard-infra",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "tsc",
+    "deploy": "cdk deploy",
+    "destroy": "cdk destroy",
+    "diff": "cdk diff",
+    "synth": "cdk synth"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "~5.6"
+  },
+  "dependencies": {
+    "aws-cdk-lib": "^2.170",
+    "constructs": "^10.0"
+  }
+}
