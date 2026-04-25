@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useHealthData } from './hooks/useHealthData';
+import { useAuthenticator, Authenticator } from '@aws-amplify/ui-react';
+import { useHealthData, apiFetch } from './hooks/useHealthData';
 import { filterData, xInterval, RangeDays } from './utils/filterData';
 import StatCard from './components/StatCard';
 import RangeFilter from './components/RangeFilter';
@@ -8,6 +9,7 @@ import SlopeChart from './components/SlopeChart';
 import NutrientChart from './components/NutrientChart';
 import EmptyState from './components/EmptyState';
 import EntryForm from './components/EntryForm';
+import { apiEndpoint } from './aws-config';
 
 function useIsMobile(breakpoint = 600) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < breakpoint);
@@ -19,20 +21,50 @@ function useIsMobile(breakpoint = 600) {
   return isMobile;
 }
 
-export default function App() {
+function Dashboard() {
+  const { signOut, user } = useAuthenticator();
   const { data, loading, error, isEmpty, refresh } = useHealthData();
   const isMobile = useIsMobile();
   const [range, setRange] = useState<RangeDays>(null);
   const [showEntryForm, setShowEntryForm] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   const filtered = useMemo(
     () => (data ? filterData(data, range) : null),
     [data, range],
   );
 
+  async function handleCsvImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImporting(true);
+    try {
+      const buf = await file.arrayBuffer();
+      const res = await apiFetch('/api/import', { method: 'POST', body: buf,
+        headers: { 'Content-Type': 'text/csv' } });
+      if (!res.ok) throw new Error(await res.text());
+      refresh();
+    } catch (err) {
+      alert(`CSVインポートエラー: ${err}`);
+    } finally {
+      setImporting(false);
+      e.target.value = '';
+    }
+  }
+
   if (loading) return <div className="center-message">読み込み中...</div>;
-  if (isEmpty || !data || !filtered) return <EmptyState />;
   if (error) return <EmptyState error={error} />;
+  if (isEmpty || !data || !filtered) return (
+    <>
+      <EmptyState />
+      <div style={{ textAlign: 'center', marginTop: 16 }}>
+        <label className="btn" style={{ cursor: 'pointer' }}>
+          {importing ? 'インポート中...' : 'CSVをインポートする'}
+          <input type="file" accept=".csv" hidden onChange={handleCsvImport} disabled={importing} />
+        </label>
+      </div>
+    </>
+  );
 
 
   const diff = filtered.weight_diff;
@@ -51,9 +83,13 @@ export default function App() {
       <header className="header">
         <h1>健康管理分析ダッシュボード</h1>
         <div className="header-actions">
-          <a href="/api/export" download="health_data.csv" className="btn btn-export">CSVエクスポート</a>
+          <a href={`${apiEndpoint.replace(/\/$/, '')}/api/export`} download="health_data.csv" className="btn btn-export">CSVエクスポート</a>
           <button className="btn btn-entry" onClick={() => setShowEntryForm(true)}>データを入力する</button>
-          <a href="/upload" className="btn">CSVで更新する</a>
+          <label className="btn" style={{ cursor: 'pointer' }}>
+            {importing ? 'インポート中...' : 'CSVで更新する'}
+            <input type="file" accept=".csv" hidden onChange={handleCsvImport} disabled={importing} />
+          </label>
+          <button className="btn" onClick={signOut} title={user?.signInDetails?.loginId}>ログアウト</button>
         </div>
       </header>
 
@@ -155,5 +191,13 @@ export default function App() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <Authenticator>
+      {() => <Dashboard />}
+    </Authenticator>
   );
 }
