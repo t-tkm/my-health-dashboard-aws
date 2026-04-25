@@ -1,183 +1,209 @@
-# 健康管理ダッシュボード
+# 健康管理ダッシュボード（AWS 版）
 
-体重・食事データを CSV でインポートし、React 製のインタラクティブなダッシュボードで可視化する個人用 Web アプリ。
+体重・食事データを可視化する個人用 Web アプリ。  
+AWS Amplify Hosting + Lambda + DynamoDB + Cognito をベースとしたサーバーレス構成。
 
 ## 機能
 
 - **体重推移**：日次体重 + 7日単純移動平均（SMA）
-- **体重増減ペース**：直近30日の線形回帰から週あたり変化量を算出
+- **体重増減ペース**：直近 30 日の線形回帰から週あたり変化量を算出
 - **栄養素グラフ**：カロリー・タンパク質・脂質・炭水化物・糖質・食物繊維・塩分（各目安ライン付き）
-- **期間フィルター**：30日 / 90日 / 半年 / 1年 / 全期間を切り替え
-- **年度表示**：長期データでは `YYYY/MM` 形式 + 年区切り線を自動表示
+- **期間フィルター**：30日 / 90日 / 半年 / 1年 / 全期間
 - **レスポンシブ**：PC・スマホ対応
-- **HTTP Basic 認証**によるアクセス制限
-- **CSV アップロード**：ブラウザからデータを一括更新
-- **データ直接入力**：Web UI から体重・食事データを日付単位で追加・編集
-- **エントリ削除**：入力フォームで全フィールドを空にして保存するとその日のデータを削除
-- **CSV エクスポート**：内部データ（`data.csv`）をそのままダウンロード
+- **Cognito 認証**：Google / Apple / Facebook / Amazon アカウントでサインイン
+- **データ直接入力**：Web UI から体重・食事データを日付単位で追加・編集・削除
+- **CSV インポート / エクスポート**：一括データ移行対応
 
 ## 技術スタック
 
 | レイヤー | 技術 |
 |---|---|
-| フロントエンド | React 18 + TypeScript + Vite + Recharts |
-| バックエンド | Flask + Flask-HTTPAuth |
-| データ処理 | pandas + numpy |
-| パッケージ管理 | uv（Python）/ npm（Node） |
+| フロントエンド | React 18 + TypeScript + Vite + Recharts + Amplify UI |
+| 認証 | Amazon Cognito（SNS IdP: Google / Apple / Facebook / Amazon） |
+| バックエンド | AWS Lambda（Python 3.12） + Amazon API Gateway |
+| データベース | Amazon DynamoDB（オンデマンドキャパシティ） |
+| ホスティング | AWS Amplify Hosting |
+| IaC | AWS CDK（TypeScript） |
 
-## ファイル構成
+## ディレクトリ構成
 
 ```
-├── app.py                  # Flask アプリ（API・アップロード・静的ファイル配信）
-├── data_processor.py       # CSV 読み書き・集計ロジック
-├── generate_dummy.py       # 開発用ダミーデータ生成スクリプト
-├── data.csv                # マスターデータ（gitignore）
-├── templates/
-│   └── upload.html         # アップロードページ
-├── src/                    # React ソース
+my-health-dashboard-aws/
+├── src/                        # React フロントエンド
 │   ├── App.tsx
-│   ├── components/         # StatCard / WeightChart / SlopeChart / NutrientChart / RangeFilter / EntryForm / EmptyState
-│   ├── hooks/
-│   │   └── useHealthData.ts
-│   ├── utils/
-│   │   ├── filterData.ts   # 期間フィルター・X軸間隔計算
-│   │   └── dateFormat.ts   # 軸ラベルフォーマット
-│   └── types.ts
-├── dist/                   # React ビルド成果物（gitignore）
-├── pyproject.toml
+│   ├── aws-config.ts           # Amplify / Cognito / API 設定
+│   ├── hooks/useHealthData.ts  # API フェッチ（JWT 付き）
+│   ├── components/
+│   └── ...
+├── backend/                    # Lambda バックエンド
+│   ├── data_processor.py       # DynamoDB 読み書き・集計ロジック
+│   ├── lambda/
+│   │   ├── data.py             # GET /api/data
+│   │   ├── entry.py            # POST/DELETE /api/entry
+│   │   ├── export.py           # GET /api/export
+│   │   └── import_csv.py       # POST /api/import
+│   └── requirements.txt
+├── infrastructure/             # AWS CDK スタック
+│   ├── bin/app.ts
+│   ├── lib/stack.ts            # DynamoDB / Lambda / API GW / Cognito
+│   └── package.json
+├── scripts/
+│   ├── generate_dummy.py       # DynamoDB Local へダミーデータ投入
+│   └── migrate_csv_to_dynamodb.py  # 既存 CSV → DynamoDB 移行
+├── docker-compose.yml          # DynamoDB Local（ローカル開発用）
+├── amplify.yml                 # Amplify Hosting ビルド設定
+├── .env.local.example          # ローカル開発用 環境変数テンプレート
+├── index.html                  # Vite エントリ HTML
+├── vite.config.ts
 ├── package.json
-└── requirements.txt        # Render デプロイ用（uv export で生成）
+└── tsconfig.json
 ```
-
-## セットアップ
-
-```bash
-# Python 依存インストール
-uv sync
-
-# Node 依存インストール
-npm install
-```
-
-## 開発サーバーの起動
-
-2 つのターミナルで起動する。
-
-```bash
-# ターミナル 1：Flask API（ポート 5000）
-uv run python app.py
-
-# ターミナル 2：Vite 開発サーバー（ポート 5173）
-npm run dev
-```
-
-ブラウザで `http://localhost:5173` を開く。
-
-> **ポート 5173 と 5000 の違い**
-> - **5173**：Vite の開発専用サーバー。コード変更が即座にブラウザに反映される（HMR）。`/api/*` は自動で 5000 にプロキシされる。
-> - **5000**：Flask 本体。本番環境ではこちらだけが動く。
-
-> **macOS でポート 5000 が使用中の場合**
-> システム設定 → 一般 → AirDrop と Handoff → AirPlay Receiver をオフ、または別ポートで起動：
-> ```bash
-> PORT=5001 uv run python app.py
-> ```
-
-## 本番ビルドと起動
-
-```bash
-# React をビルド（dist/ を生成）
-npm run build
-
-# Flask が dist/ を配信
-uv run gunicorn app:app
-```
-
-ブラウザで `http://localhost:8000` を開く。
-
-## 環境変数
-
-| 変数名 | デフォルト | 説明 |
-|---|---|---|
-| `DASHBOARD_USER` | `test` | 認証ユーザー名 |
-| `DASHBOARD_PASS` | `pw2026@` | 認証パスワード |
-| `SECRET_KEY` | `dev-secret-key-change-in-prod` | Flask セッション用シークレットキー |
-| `PORT` | `5000` | サーバーのポート番号 |
-
-本番環境では `DASHBOARD_USER`・`DASHBOARD_PASS`・`SECRET_KEY` を必ず変更すること。
-
-## CSV ファイルの形式
-
-アップロードする `.csv` ファイルに必要なカラム。余分なカラム（`曜日`・`備考` など）があっても無視される。
-
-| カラム名 | 必須 | 説明 |
-|---|---|---|
-| `日付` | ○ | `YYYY/M/D` 形式（例: `2026/3/8`） |
-| `体重` | ○ | kg |
-| `カロリー` | ○ | kcal |
-| `たんぱく質` | ○ | g |
-| `脂質` | ○ | g |
-| `炭水化物` | ○ | g |
-| `糖質` | ○ | g |
-| `食物繊維` | ○ | g |
-| `塩分` | ○ | g |
-| `カロリー(目安)` | ○ | kcal |
-| `たんぱく質(目安)` | ○ | g |
-| `脂質(目安)` | ○ | g |
-| `炭水化物(目安)` | ○ | g |
-| `糖質(目安)` | ○ | g |
-| `食物繊維(目安)` | ○ | g |
-| `塩分(目安)` | ○ | g |
-
-文字コードは UTF-8（BOM あり/なし両対応）または Shift-JIS。
-
-## ダミーデータの生成
-
-開発・テスト用に 1 年分（365 日）のダミーデータを生成できる：
-
-```bash
-uv run python generate_dummy.py
-```
-
-`data.csv` が生成され、サーバー起動後すぐに確認できる。
 
 ---
 
-## 付録：Render へのデプロイ
+## ローカル開発
 
-### ビルドと起動
-
-| 項目 | 設定値 |
-|---|---|
-| **Environment** | `Python 3` |
-| **Build Command** | `pip install -r requirements.txt && npm install && npm run build` |
-| **Start Command** | `gunicorn app:app` |
-
-> **注意** Build Command には `npm install && npm run build` が必須です。
-> これを省略すると Flask 起動時に `dist/` が存在せず "React build not found" エラーになります。
-> Render の Python 3 環境には Node.js が同梱されているので `npm` はそのまま使えます。
-
-### 環境変数（Render の Environment タブで設定）
-
-| 変数名 | 説明 |
-|---|---|
-| `DASHBOARD_USER` | 認証ユーザー名 |
-| `DASHBOARD_PASS` | 認証パスワード |
-| `SECRET_KEY` | ランダムな文字列（例：`python -c "import secrets; print(secrets.token_hex())"` で生成） |
-
-### `requirements.txt` の更新
-
-Python 依存関係を変更した際は再生成してコミット：
+### 1. 依存インストール
 
 ```bash
-uv export --no-hashes -o requirements.txt
-git add requirements.txt && git commit -m "update requirements.txt"
+npm install
+cd infrastructure && npm install && cd ..
 ```
 
-### トラブルシューティング
+### 2. DynamoDB Local を起動
 
-| 症状 | 原因 | 対処 |
-|---|---|---|
-| "React build not found" | Build Command に `npm run build` が含まれていない | Build Command を上記の通り修正して再デプロイ |
-| 認証が通らない | 環境変数 `DASHBOARD_USER` / `DASHBOARD_PASS` 未設定 | Render の Environment タブで設定 |
-| アップロード後データが消える | Free プランはディスクが非永続（再デプロイでリセット） | 永続ディスクが必要な場合は有料プランへ移行 |
+```bash
+docker-compose up -d
+```
+
+- DynamoDB Local: `http://localhost:8000`
+- GUI（dynamodb-admin）: `http://localhost:8001`
+
+### 3. ダミーデータを投入
+
+```bash
+pip install boto3 pandas numpy   # 初回のみ
+DYNAMODB_ENDPOINT=http://localhost:8000 \
+python scripts/generate_dummy.py --user-id dummy-user-001 --create-table
+```
+
+### 4. 環境変数を設定
+
+```bash
+cp .env.local.example .env.local
+# .env.local を編集して CDK デプロイ後の値を記入
+```
+
+### 5. フロントエンド開発サーバー起動
+
+```bash
+npm run dev
+```
+
+`http://localhost:5173` を開く。  
+ローカルでは Cognito 認証がかかるため、`.env.local` に実際の Cognito 設定が必要。
+
+---
+
+## AWS へのデプロイ
+
+### 前提条件
+
+- AWS CLI が設定済み（`aws configure`）
+- CDK がインストール済み（`npm install -g aws-cdk`）
+- CDK Bootstrap 済み（初回のみ: `cdk bootstrap`）
+
+### 1. CDK でインフラをデプロイ
+
+```bash
+cd infrastructure
+npm install
+cdk deploy
+```
+
+デプロイ後、出力に以下が表示される：
+
+```
+Outputs:
+  HealthDashboardStack.ApiEndpoint      = https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/prod/
+  HealthDashboardStack.UserPoolId       = ap-northeast-1_xxxxxxxxx
+  HealthDashboardStack.UserPoolClientId = xxxxxxxxxxxxxxxxxxxxxxxxxx
+  HealthDashboardStack.CognitoDomain    = https://health-dashboard-xxxxxxxxxxxx.auth.ap-northeast-1.amazoncognito.com
+```
+
+### 2. Amplify Hosting をセットアップ
+
+1. AWS コンソール → Amplify → 「新しいアプリを作成」
+2. GitHub リポジトリを連携
+3. **環境変数**を設定（CDK 出力の値を使用）：
+
+| 変数名 | 値 |
+|---|---|
+| `VITE_USER_POOL_ID` | CDK 出力の `UserPoolId` |
+| `VITE_USER_POOL_CLIENT_ID` | CDK 出力の `UserPoolClientId` |
+| `VITE_COGNITO_DOMAIN` | CDK 出力の `CognitoDomain` |
+| `VITE_API_ENDPOINT` | CDK 出力の `ApiEndpoint` |
+
+4. デプロイを実行 → Amplify が `amplify.yml` に従ってビルド・配信
+
+### 3. SNS IdP の追加（オプション）
+
+各プロバイダーのデベロッパーコンソールで OAuth 認証情報を取得し、
+`infrastructure/lib/stack.ts` のコメントアウトを解除して再デプロイ：
+
+| IdP | 取得先 |
+|---|---|
+| Google | [Google Cloud Console](https://console.cloud.google.com/) |
+| Apple | [Apple Developer](https://developer.apple.com/) |
+| Facebook | [Meta for Developers](https://developers.facebook.com/) |
+| Amazon | [Amazon Developer](https://developer.amazon.com/) |
+
+---
+
+## 既存 CSV データの移行
+
+Render 版から移行する場合、`migrate_csv_to_dynamodb.py` を使う：
+
+```bash
+# Cognito で取得した自分のユーザー ID（sub）を確認してから実行
+python scripts/migrate_csv_to_dynamodb.py \
+    --csv data.csv \
+    --user-id <cognito-user-sub> \
+    --region ap-northeast-1
+
+# DynamoDB Local でテストする場合
+python scripts/migrate_csv_to_dynamodb.py \
+    --csv data.csv \
+    --user-id dummy-user-001 \
+    --endpoint http://localhost:8000 \
+    --create-table
+```
+
+---
+
+## CSV ファイルの形式
+
+インポートする `.csv` に必要なカラム（余分なカラムは無視）：
+
+| カラム名 | 説明 |
+|---|---|
+| `日付` | `YYYY/M/D` 形式（例: `2026/3/8`） |
+| `体重` | kg |
+| `カロリー` / `たんぱく質` / `脂質` / `炭水化物` / `糖質` / `食物繊維` / `塩分` | 各栄養素 |
+| `カロリー(目安)` / `たんぱく質(目安)` … | 各目安値 |
+
+文字コードは UTF-8（BOM あり/なし両対応）または Shift-JIS。
+
+---
+
+## 月額コスト目安
+
+個人利用（小規模）の場合：
+
+| サービス | 月額目安 |
+|---|---|
+| Amplify Hosting | ~$0–1 |
+| Lambda + API Gateway | ~$0（無料枠内） |
+| DynamoDB | ~$0（25GB / 25WCU / 25RCU 永続無料枠） |
+| Cognito | ~$0（MAU 50,000 まで無料） |
+| **合計** | **~$0–数ドル/月** |
