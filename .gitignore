@@ -1,0 +1,17 @@
+*.xlsx
+/dashboard.html
+.venv/
+.claude/
+__pycache__/
+*.pyc
+.DS_Store
+node_modules/
+dist/
+data.csv
+tsconfig.tsbuildinfo
+health_trends.png
+health_improvement_report.png
+inspect_excel.py
+check_tail.py
+visualize_health.py
+visualize_health_pro.py

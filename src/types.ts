@@ -1,0 +1,31 @@
+export interface HealthData {
+  dates: string[];
+  weights: number[];
+  calories: number[];
+  sma7: number[];
+  slope_dates: string[];
+  slope_values: (number | null)[];
+  protein_gram: number[];
+  fat_gram: number[];
+  carb_gram: number[];
+  sugar_gram: number[];
+  fiber_gram: number[];
+  salt_gram: number[];
+  cal_target: number;
+  protein_target: number;
+  fat_target: number;
+  carb_target: number;
+  sugar_target: number;
+  fiber_target: number;
+  salt_target: number;
+  current_weight: number;
+  sma7_start: number;
+  sma7_end: number;
+  sma7_start_date: string;
+  sma7_end_date: string;
+  weight_diff: number;
+  avg_cal: number;
+  record_days: number;
+  weight_min: number;
+  weight_max: number;
+}

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>健康管理ダッシュボード - データアップロード</title>
+  <style>
+    body { font-family: sans-serif; background: #f4f6f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #fff; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); padding: 2rem; width: 100%; max-width: 400px; }
+    h1 { font-size: 1.4rem; margin: 0 0 1.5rem; color: #333; text-align: center; }
+    .error { background: #fff0f0; border: 1px solid #f5c6cb; color: #721c24; border-radius: 4px; padding: 0.75rem 1rem; margin-bottom: 1rem; font-size: 0.9rem; }
+    label { display: block; margin-bottom: 0.5rem; color: #555; font-size: 0.9rem; }
+    input[type=file] { display: block; width: 100%; margin-bottom: 1.5rem; font-size: 0.9rem; }
+    button { width: 100%; padding: 0.75rem; background: #4a90d9; color: #fff; border: none; border-radius: 4px; font-size: 1rem; cursor: pointer; transition: background 0.15s; }
+    button:hover:not(:disabled) { background: #3a7bc8; }
+    button:disabled { background: #92b8e8; cursor: not-allowed; }
+    .note { margin-top: 1rem; font-size: 0.8rem; color: #888; text-align: center; }
+
+    /* ローディングオーバーレイ */
+    .overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.85);
+      z-index: 100;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    .overlay.show { display: flex; }
+
+    .spinner {
+      width: 52px;
+      height: 52px;
+      border: 5px solid #e0e8f5;
+      border-top-color: #4a90d9;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .overlay-text {
+      font-size: 1rem;
+      color: #444;
+      font-weight: 600;
+    }
+    .overlay-sub {
+      font-size: 0.85rem;
+      color: #888;
+      margin-top: -12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ローディングオーバーレイ -->
+  <div class="overlay" id="overlay">
+    <div class="spinner"></div>
+    <div class="overlay-text">データを処理中です...</div>
+    <div class="overlay-sub">しばらくお待ちください</div>
+  </div>
+
+  <div class="card">
+    <h1>健康データをアップロード</h1>
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data" id="upload-form">
+      <label for="file">CSVファイル（.csv）を選択してください：</label>
+      <input type="file" id="file" name="file" accept=".csv" required>
+      <button type="submit" id="submit-btn">アップロードしてダッシュボードを表示</button>
+    </form>
+    <p class="note">
+      必須カラム: 日付, 体重, カロリー, たんぱく質, 脂質, 炭水化物, 糖質, 食物繊維, 塩分,<br>
+      カロリー(目安), たんぱく質(目安), 脂質(目安), 炭水化物(目安), 糖質(目安), 食物繊維(目安), 塩分(目安)<br>
+      日付フォーマット: YYYY/M/D（例: 2026/3/8）
+    </p>
+  </div>
+
+  <script>
+    document.getElementById('upload-form').addEventListener('submit', function () {
+      document.getElementById('overlay').classList.add('show');
+      document.getElementById('submit-btn').disabled = true;
+    });
+  </script>
+</body>
+</html>
