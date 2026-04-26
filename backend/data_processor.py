@@ -39,8 +39,12 @@ def _get_table():
     kwargs = dict(region_name=os.environ.get('AWS_REGION', 'us-east-1'))
     if DYNAMODB_ENDPOINT:
         kwargs['endpoint_url'] = DYNAMODB_ENDPOINT
-        kwargs['aws_access_key_id'] = 'dummy'
-        kwargs['aws_secret_access_key'] = 'dummy'
+        # ローカル接続時は環境変数でダミー認証情報を強制セットし、
+        # SSO 設定済みプロファイルの読み込みをバイパスする
+        os.environ['AWS_ACCESS_KEY_ID'] = 'dummy'
+        os.environ['AWS_SECRET_ACCESS_KEY'] = 'dummy'
+        os.environ.pop('AWS_PROFILE', None)
+        os.environ.pop('AWS_DEFAULT_PROFILE', None)
     return boto3.resource('dynamodb', **kwargs).Table(TABLE_NAME)
 
 
