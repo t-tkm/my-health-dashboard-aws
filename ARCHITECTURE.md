@@ -66,6 +66,7 @@ my-health-dashboard-aws/
 │   ├── main.tsx                  # Amplify.configure + Authenticator.Provider
 │   ├── App.tsx                   # ルートコンポーネント（Authenticatorラップ）
 │   ├── aws-config.ts             # Amplify / Cognito / API エンドポイント設定
+│   ├── vite-env.d.ts             # import.meta.env 型定義（/// <reference types="vite/client" />）
 │   ├── index.css
 │   ├── types.ts                  # HealthData 型定義
 │   │
@@ -86,9 +87,9 @@ my-health-dashboard-aws/
 │       └── dateFormat.ts         # 軸ラベルフォーマット
 │
 ├── backend/                      # Lambda バックエンド
+│   ├── common.py                 # CORS ヘッダー・認証ユーザー取得ユーティリティ
 │   ├── data_processor.py         # DynamoDB 読み書き + compute()
 │   ├── lambda/
-│   │   ├── common.py             # CORS ヘッダー・認証ユーザー取得ユーティリティ
 │   │   ├── data.py               # GET /api/data ハンドラー
 │   │   ├── entry.py              # POST/DELETE /api/entry ハンドラー
 │   │   ├── export.py             # GET /api/export ハンドラー
@@ -104,10 +105,10 @@ my-health-dashboard-aws/
 │
 ├── scripts/
 │   ├── generate_dummy.py         # DynamoDB Local へダミーデータ投入
+│   ├── generate_dummy_csv.py     # Web UI インポート用ダミー CSV 生成
 │   └── migrate_csv_to_dynamodb.py # 旧 CSV → DynamoDB 移行
 │
 ├── docker-compose.yml            # DynamoDB Local + dynamodb-admin
-├── amplify.yml                   # Amplify Hosting ビルド設定
 ├── .env.local.example            # ローカル VITE_* 変数テンプレート
 ├── index.html                    # Vite エントリ HTML
 ├── vite.config.ts
@@ -234,11 +235,12 @@ docker-compose
 
 | リソース | 設定 |
 |---|---|
-| DynamoDB | `health-entries`、PAY_PER_REQUEST、削除保護あり |
-| Lambda × 4 | Python 3.12、`backend/` をバンドル、タイムアウト 30s |
-| API Gateway | REST API、Cognito Authorizer、CORS 設定済み |
-| Cognito User Pool | email サインアップ、SNS IdP 対応（要 OAuth 認証情報） |
+| DynamoDB | `health-entries`、PAY_PER_REQUEST、removalPolicy: DESTROY |
+| Lambda × 4 | Python 3.12 / **ARM_64**、`backend/` を Docker バンドル、タイムアウト 30s |
+| API Gateway | REST API、Cognito Authorizer、CORS（allowOrigins: \*） |
+| Cognito User Pool | email サインアップ、SNS IdP 対応（要 OAuth 認証情報）、removalPolicy: DESTROY |
 | Cognito Domain | `health-dashboard-{accountId}.auth.{region}.amazoncognito.com` |
+| Amplify Hosting | CfnApp + CfnBranch（GitHub 連携、自動ビルド）、SPA リライトルール付き |
 
 ---
 
@@ -280,14 +282,16 @@ const bundling: cdk.BundlingOptions = {
 ### なぜ Docker ビルドが必要か
 
 `backend/requirements.txt` に含まれる `pandas` / `numpy` は **C 拡張（ネイティブバイナリ）** を持つ。
+ビルド環境と Lambda 実行環境の ABI が一致している必要がある。
 
 | 環境 | ABI |
 |---|---|
-| macOS（開発機） | arm64 / x86_64 macOS |
-| Lambda 実行環境 | x86_64 Amazon Linux 2 |
+| Apple Silicon Mac（開発機） | aarch64（ARM64） |
+| Lambda ARM_64 実行環境 | aarch64（ARM64） |
 
-macOS でビルドしたバイナリをそのまま Lambda に上げると ABI 不一致でクラッシュする。
-SAM ビルドイメージは Lambda と同じ Amazon Linux 2 環境のため、そこで `pip install` することで互換性のあるバイナリが生成される。
+本プロジェクトでは Lambda を `ARM_64` に設定しているため、Apple Silicon Mac 上の Docker（ARM SAM イメージ）でビルドしたバイナリをそのまま使用できる。
+
+> **注意**: Lambda のアーキテクチャを `x86_64` に変更した場合、Apple Silicon Mac の Docker は ARM バイナリを生成するため ABI 不一致でクラッシュする。その場合は `--platform linux/amd64` を明示するか、Lambda Layer に切り替えが必要。
 
 ### Docker ビルドを省略したい場合
 
