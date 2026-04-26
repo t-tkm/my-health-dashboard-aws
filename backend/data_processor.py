@@ -231,7 +231,7 @@ def items_to_csv(items: list[dict]) -> str:
     fieldnames = ['date', 'weight', 'body_fat_percent', 'calories', 'protein_g', 'fat_g', 'carb_g',
                   'sugar_g', 'fiber_g', 'salt_g'] + _TARGET_FIELDS
     buf = io.StringIO()
-    buf.write('﻿')  # BOM
+    buf.write('﻿')  # UTF-8 BOM (Excel 用)
     writer = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction='ignore')
     writer.writeheader()
     for item in sorted(items, key=lambda x: x['date']):
