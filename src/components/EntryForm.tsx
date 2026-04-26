@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { apiFetch } from '../hooks/useHealthData';
 import { HealthData } from '../types';
 
 interface Props {
@@ -98,10 +99,8 @@ export default function EntryForm({ data, onClose, onSaved }: Props) {
       if (!window.confirm(`${form.date} のデータを削除しますか？`)) return;
       setSubmitting(true);
       try {
-        const res = await fetch('/api/entry', {
+        const res = await apiFetch('/api/entry', {
           method: 'DELETE',
-          credentials: 'same-origin',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ date: form.date }),
         });
         const json = await res.json();
@@ -118,10 +117,8 @@ export default function EntryForm({ data, onClose, onSaved }: Props) {
 
     setSubmitting(true);
     try {
-      const res = await fetch('/api/entry', {
+      const res = await apiFetch('/api/entry', {
         method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
       const json = await res.json();
