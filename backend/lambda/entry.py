@@ -34,17 +34,19 @@ def handler(event, context):
         return ok(compute(items) if items else {}, origin)
 
     if method == 'POST':
-        weight = body.get('weight')
+        weight           = body.get('weight')
+        body_fat_percent = body.get('body_fat_percent')
         nutrition_keys = ('calories', 'protein_g', 'fat_g', 'carb_g', 'sugar_g', 'fiber_g', 'salt_g')
         nutrition = {k: body[k] for k in nutrition_keys if k in body} or None
         target_keys = ('cal_target', 'protein_target', 'fat_target', 'carb_target',
                        'sugar_target', 'fiber_target', 'salt_target')
         targets = {k: body[k] for k in target_keys if k in body} or None
 
-        if weight is None and not nutrition:
-            return err(400, '体重か栄養素のどちらかを入力してください', origin)
+        if weight is None and body_fat_percent is None and not nutrition:
+            return err(400, '体重か体脂肪率か栄養素のいずれかを入力してください', origin)
 
-        put_entry(user_id, date, weight=weight, nutrition=nutrition, targets=targets)
+        put_entry(user_id, date, weight=weight, body_fat_percent=body_fat_percent,
+                  nutrition=nutrition, targets=targets)
         items = load_items(user_id)
         return ok(compute(items), origin)
 

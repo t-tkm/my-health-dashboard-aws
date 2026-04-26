@@ -28,9 +28,9 @@
 ---
 
 ### C-03: EntryForm
-- **Purpose**: 体重・食事データの入力・編集・削除を行うモーダルフォーム
+- **Purpose**: 体重・体脂肪率・食事データの入力・編集・削除を行うモーダルフォーム
 - **Responsibilities**:
-  - 日付・体重・栄養素・目安値の入力フォーム管理
+  - 日付・体重・体脂肪率・栄養素・目安値の入力フォーム管理
   - POST /api/entry による新規登録・更新
   - DELETE /api/entry による削除
   - 操作後の Dashboard リフレッシュトリガー
@@ -42,6 +42,7 @@
 - **Purpose**: 健康データを Recharts で可視化する表示専用コンポーネント群
 - **Responsibilities**:
   - WeightChart: 体重推移折れ線グラフ（日次体重 + 7日SMA + Brush）
+  - BodyFatChart: 体脂肪率折れ線グラフ（日次体脂肪率 + 7日SMA + Brush）
   - SlopeChart: 週次増減ペース棒グラフ（線形回帰傾き）
   - NutrientChart: 栄養素棒グラフ（目安ライン付き）
   - StatCard: サマリーカード（最新体重 / 平均カロリー / 記録日数）

@@ -11,6 +11,7 @@ interface Props {
 interface FormState {
   date: string;
   weight: string;
+  body_fat_percent: string;
   calories: string;
   protein_g: string;
   fat_g: string;
@@ -20,7 +21,7 @@ interface FormState {
   salt_g: string;
 }
 
-const EMPTY_NUTRITION: Omit<FormState, 'date' | 'weight'> = {
+const EMPTY_NUTRITION: Omit<FormState, 'date' | 'weight' | 'body_fat_percent'> = {
   calories: '', protein_g: '', fat_g: '', carb_g: '', sugar_g: '', fiber_g: '', salt_g: '',
 };
 
@@ -33,19 +34,21 @@ function numStr(v: number): string {
 }
 
 function valuesForDate(data: HealthData | null, date: string): Omit<FormState, 'date'> {
-  const blank = { weight: '', ...EMPTY_NUTRITION };
+  const blank = { weight: '', body_fat_percent: '', ...EMPTY_NUTRITION };
   if (!data) return blank;
   const idx = data.dates.indexOf(date);
   if (idx === -1) return blank;
+  const bf = data.body_fat_percents[idx];
   return {
-    weight:    numStr(data.weights[idx]),
-    calories:  numStr(data.calories[idx]),
-    protein_g: numStr(data.protein_gram[idx]),
-    fat_g:     numStr(data.fat_gram[idx]),
-    carb_g:    numStr(data.carb_gram[idx]),
-    sugar_g:   numStr(data.sugar_gram[idx]),
-    fiber_g:   numStr(data.fiber_gram[idx]),
-    salt_g:    numStr(data.salt_gram[idx]),
+    weight:           numStr(data.weights[idx]),
+    body_fat_percent: bf !== null ? numStr(bf) : '',
+    calories:         numStr(data.calories[idx]),
+    protein_g:        numStr(data.protein_gram[idx]),
+    fat_g:            numStr(data.fat_gram[idx]),
+    carb_g:           numStr(data.carb_gram[idx]),
+    sugar_g:          numStr(data.sugar_gram[idx]),
+    fiber_g:          numStr(data.fiber_gram[idx]),
+    salt_g:           numStr(data.salt_gram[idx]),
   };
 }
 
@@ -58,6 +61,7 @@ export default function EntryForm({ data, onClose, onSaved }: Props) {
   const initialDate = today();
   const [form, setForm] = useState<FormState>({
     date: initialDate,
+    body_fat_percent: '',
     ...valuesForDate(data, initialDate),
   });
   const [submitting, setSubmitting] = useState(false);
@@ -81,6 +85,8 @@ export default function EntryForm({ data, onClose, onSaved }: Props) {
     const body: Record<string, unknown> = { date: form.date };
     const w = parseOptional(form.weight);
     if (w !== undefined) body.weight = w;
+    const bf = parseOptional(form.body_fat_percent);
+    if (bf !== undefined) body.body_fat_percent = bf;
 
     const nutritionKeys = ['calories', 'protein_g', 'fat_g', 'carb_g', 'sugar_g', 'fiber_g', 'salt_g'] as const;
     for (const k of nutritionKeys) {
@@ -88,7 +94,7 @@ export default function EntryForm({ data, onClose, onSaved }: Props) {
       if (v !== undefined) body[k] = v;
     }
 
-    const allEmpty = !body.weight && nutritionKeys.every(k => !(k in body));
+    const allEmpty = !body.weight && !body.body_fat_percent && nutritionKeys.every(k => !(k in body));
 
     if (allEmpty && !hasExisting) {
       setError('体重か栄養素のどちらかを入力してください');
@@ -159,6 +165,11 @@ export default function EntryForm({ data, onClose, onSaved }: Props) {
               <label>体重 (kg)</label>
               <input type="number" step="0.1" placeholder="例: 70.5"
                 value={form.weight} onChange={e => set('weight', e.target.value)} />
+            </div>
+            <div className="form-group">
+              <label>体脂肪率 (%)</label>
+              <input type="number" step="0.1" placeholder="例: 20.5"
+                value={form.body_fat_percent} onChange={e => set('body_fat_percent', e.target.value)} />
             </div>
           </div>
 

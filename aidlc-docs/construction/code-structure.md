@@ -95,8 +95,9 @@ classDiagram
 - `src/utils/dateFormat.ts` — グラフ軸ラベル用日付フォーマッター
 - `src/components/StatCard.tsx` — サマリーカード（最新体重・平均カロリー・表示期間）
 - `src/components/RangeFilter.tsx` — 期間切り替えボタン群（30/90/180/365/全期間）
-- `src/components/EntryForm.tsx` — 体重・食事データ入力/編集/削除モーダル
+- `src/components/EntryForm.tsx` — 体重・体脂肪率・食事データ入力/編集/削除モーダル
 - `src/components/WeightChart.tsx` — 体重推移折れ線グラフ（SMA7・Brush 付き、Recharts）
+- `src/components/BodyFatChart.tsx` — 体脂肪率折れ線グラフ（SMA7・Brush 付き、Recharts）
 - `src/components/SlopeChart.tsx` — 週次増減ペース棒グラフ（Recharts）
 - `src/components/NutrientChart.tsx` — 栄養素棒グラフ（目安ライン付き、Recharts）
 - `src/components/EmptyState.tsx` — データなし・エラー状態表示
