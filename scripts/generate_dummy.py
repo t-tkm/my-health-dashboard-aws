@@ -110,12 +110,17 @@ def main() -> None:
     parser.add_argument('--create-table', action='store_true')
     args = parser.parse_args()
 
+    # boto3 はプロファイル（SSO 含む）をロードしようとするため、
+    # ローカル接続時は環境変数で静的ダミー認証情報を強制セットして SSO をバイパスする
+    os.environ['AWS_ACCESS_KEY_ID'] = 'dummy'
+    os.environ['AWS_SECRET_ACCESS_KEY'] = 'dummy'
+    os.environ.pop('AWS_PROFILE', None)
+    os.environ.pop('AWS_DEFAULT_PROFILE', None)
+
     dynamodb = boto3.resource(
         'dynamodb',
         endpoint_url=args.endpoint,
         region_name=args.region,
-        aws_access_key_id='dummy',
-        aws_secret_access_key='dummy',
     )
 
     if args.create_table:

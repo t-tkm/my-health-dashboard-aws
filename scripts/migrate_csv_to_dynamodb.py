@@ -71,8 +71,10 @@ def migrate(csv_path: str, user_id: str, table_name: str, endpoint: str | None,
     kwargs: dict = {'region_name': region}
     if endpoint:
         kwargs['endpoint_url'] = endpoint
-        kwargs['aws_access_key_id'] = 'dummy'
-        kwargs['aws_secret_access_key'] = 'dummy'
+        os.environ['AWS_ACCESS_KEY_ID'] = 'dummy'
+        os.environ['AWS_SECRET_ACCESS_KEY'] = 'dummy'
+        os.environ.pop('AWS_PROFILE', None)
+        os.environ.pop('AWS_DEFAULT_PROFILE', None)
 
     dynamodb = boto3.resource('dynamodb', **kwargs)
 
