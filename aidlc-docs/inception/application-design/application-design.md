@@ -53,7 +53,7 @@
 | 決定 | 内容 | 理由 |
 |---|---|---|
 | 単一 CDK スタック | 全リソースを HealthDashboardStack 1 つで管理 | 個人利用規模では分割の複雑さより一元管理を優先 |
-| Lambda ARM_64 | Python 3.12 ARM_64 を採用 | Apple Silicon 開発環境との ABI 整合性。Docker ビルドの複雑さを回避 |
+| Lambda ARM_64 | Python 3.12 ARM_64 を採用。bundling に `platform: linux/arm64` を指定 | ARM_64 用 wheels を取得するために必須。Intel Mac でも QEMU エミュレーション経由でビルド可能（2〜5倍遅い） |
 | DynamoDB 単一テーブル | userId(PK) + date(SK) | シンプルなアクセスパターンに最適。GSI 不要 |
 | 2ステップデプロイ | Amplify URL → Cognito callbackUrls を2回に分けて設定 | Amplify URL が CDK デプロイ前不明なため循環依存を回避 |
 | セルフサインアップ無効 | selfSignUpEnabled: false | 個人利用のためアクセス制御を管理者に限定 |
