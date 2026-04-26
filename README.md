@@ -133,7 +133,21 @@ aws sts get-caller-identity
 
 必要な権限の目安（管理者ロール推奨）：`dynamodb:*` / `lambda:*` / `apigateway:*` / `cognito-idp:*` / `iam:CreateRole` / `cloudformation:*` / `s3:*`
 
-### 1. CDK でインフラをデプロイ
+### 1. GitHub Personal Access Token を用意する（初回のみ）
+
+CDK が Amplify と GitHub を連携するために PAT が必要。
+
+1. GitHub → Settings → Developer settings → Personal access tokens → Generate new token
+2. スコープ: `repo` にチェック
+3. 生成されたトークンを環境変数にセット：
+
+```bash
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+```
+
+### 2. CDK でインフラをデプロイ
+
+Amplify アプリ・Cognito・Lambda・DynamoDB・API Gateway がすべて一括デプロイされる。
 
 ```bash
 cd infrastructure
@@ -146,26 +160,14 @@ cdk deploy
 
 ```
 Outputs:
+  HealthDashboardStack.AmplifyAppUrl    = https://main.xxxxxxxxxx.amplifyapp.com
   HealthDashboardStack.ApiEndpoint      = https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/prod/
   HealthDashboardStack.UserPoolId       = ap-northeast-1_xxxxxxxxx
   HealthDashboardStack.UserPoolClientId = xxxxxxxxxxxxxxxxxxxxxxxxxx
   HealthDashboardStack.CognitoDomain    = https://health-dashboard-xxxxxxxxxxxx.auth.ap-northeast-1.amazoncognito.com
 ```
 
-### 2. Amplify Hosting をセットアップ
-
-1. AWS コンソール → Amplify → 「新しいアプリを作成」
-2. GitHub リポジトリを連携
-3. **環境変数**を設定（CDK 出力の値を使用）：
-
-| 変数名 | 値 |
-|---|---|
-| `VITE_USER_POOL_ID` | CDK 出力の `UserPoolId` |
-| `VITE_USER_POOL_CLIENT_ID` | CDK 出力の `UserPoolClientId` |
-| `VITE_COGNITO_DOMAIN` | CDK 出力の `CognitoDomain` |
-| `VITE_API_ENDPOINT` | CDK 出力の `ApiEndpoint` |
-
-4. デプロイを実行 → Amplify が `amplify.yml` に従ってビルド・配信
+`VITE_*` 環境変数は CDK が Amplify に自動設定するため、コンソールでの手動設定は不要。
 
 ### 3. SNS IdP の追加（オプション）
 
@@ -199,6 +201,31 @@ python scripts/migrate_csv_to_dynamodb.py \
     --endpoint http://localhost:8000 \
     --create-table
 ```
+
+---
+
+## リソースの削除（クリーンアップ）
+
+すべての AWS リソースを一括削除できる：
+
+```bash
+cd infrastructure
+cdk destroy
+```
+
+| リソース | 削除 | 備考 |
+|---|---|---|
+| Amplify アプリ | ✅ | |
+| API Gateway | ✅ | |
+| Lambda × 4 | ✅ | |
+| Cognito User Pool | ✅ | ユーザーアカウントも削除される |
+| DynamoDB | ✅ | データも削除される |
+| CDK Bootstrap 用 S3 / ECR | 手動 | `CDKToolkit` スタックを別途削除 |
+
+> CDK Bootstrap リソースを削除したい場合：
+> ```bash
+> aws cloudformation delete-stack --stack-name CDKToolkit
+> ```
 
 ---
 
