@@ -49,6 +49,14 @@ export class HealthDashboardStack extends cdk.Stack {
         '    paths:',
         "      - node_modules/**/*",
       ].join('\n'),
+      customRules: [
+        // SPA rewrite: serve index.html for all non-file routes
+        {
+          source: '</^[^.]+$|\\.((?!css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json|webmanifest).)([^.]+$)/>',
+          target: '/index.html',
+          status: '200',
+        },
+      ],
     });
 
     new amplify.CfnBranch(this, 'MainBranch', {
@@ -198,7 +206,6 @@ export class HealthDashboardStack extends cdk.Stack {
         allowOrigins: apigw.Cors.ALL_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
         allowHeaders: ['Content-Type', 'Authorization'],
-        allowCredentials: true,
       },
     });
 

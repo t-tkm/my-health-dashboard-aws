@@ -10,7 +10,6 @@ def cors_headers(origin: str | None = None) -> dict:
         'Access-Control-Allow-Origin': allow,
         'Access-Control-Allow-Headers': 'Content-Type,Authorization',
         'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
-        'Access-Control-Allow-Credentials': 'true',
     }
 
 
