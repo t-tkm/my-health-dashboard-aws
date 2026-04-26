@@ -25,7 +25,7 @@ _TARGET_FIELDS = ['cal_target', 'protein_target', 'fat_target', 'carb_target',
 
 # CSV column name -> DynamoDB attribute name
 _CSV_TO_DB = {
-    '日付': 'date', '体重': 'weight',
+    '日付': 'date', '体重': 'weight', '体脂肪率': 'body_fat_percent',
     'カロリー': 'calories', 'たんぱく質': 'protein_g', '脂質': 'fat_g',
     '炭水化物': 'carb_g', '糖質': 'sugar_g', '食物繊維': 'fiber_g', '塩分': 'salt_g',
     'カロリー(目安)': 'cal_target', 'たんぱく質(目安)': 'protein_target',
@@ -85,7 +85,7 @@ def _items_to_df(items: list[dict]) -> pd.DataFrame:
         return pd.DataFrame()
     df = pd.DataFrame(items)
     df = df.sort_values('date').reset_index(drop=True)
-    numeric_cols = ['weight', 'calories', 'protein_g', 'fat_g', 'carb_g',
+    numeric_cols = ['weight', 'body_fat_percent', 'calories', 'protein_g', 'fat_g', 'carb_g',
                     'sugar_g', 'fiber_g', 'salt_g'] + _TARGET_FIELDS
     for col in numeric_cols:
         if col in df.columns:
@@ -127,6 +127,12 @@ def compute(items: list[dict]) -> dict:
     fiber_target   = last_val('fiber_target')
     salt_target    = last_val('salt_target')
 
+    # 体脂肪率SMAはfillna(0)の前に計算（欠損日を0として扱わないため）
+    bf_series = df['body_fat_percent'] if 'body_fat_percent' in df.columns else pd.Series(
+        [np.nan] * len(df), index=df.index)
+    bf_series = pd.to_numeric(bf_series, errors='coerce')
+    sma7_bf = bf_series.rolling(window=7, min_periods=1).mean().round(2)
+
     df['weight'] = pd.to_numeric(df['weight'], errors='coerce').interpolate(method='linear')
     df = df.fillna(0)
 
@@ -139,11 +145,34 @@ def compute(items: list[dict]) -> dict:
     if len(df) - 1 not in weekly_idx:
         weekly_idx.append(len(df) - 1)
 
+    def _nullable_list(series: pd.Series) -> list:
+        return [round(float(v), 2) if not (isinstance(v, float) and np.isnan(v)) else None
+                for v in series.tolist()]
+
+    # 体脂肪サマリー（有効値のみ）
+    bf_valid_idx   = bf_series.dropna().index
+    sma7_bf_valid  = sma7_bf.dropna()
+    current_body_fat       = round(float(bf_series.loc[bf_valid_idx[-1]]), 1) if len(bf_valid_idx) > 0 else None
+    sma7_bf_start          = round(float(sma7_bf_valid.iloc[0]),  1) if len(sma7_bf_valid) > 0 else None
+    sma7_bf_end            = round(float(sma7_bf_valid.iloc[-1]), 1) if len(sma7_bf_valid) > 0 else None
+    sma7_bf_start_date     = df['date'].iloc[sma7_bf_valid.index[0]]  if len(sma7_bf_valid) > 0 else None
+    sma7_bf_end_date       = df['date'].iloc[sma7_bf_valid.index[-1]] if len(sma7_bf_valid) > 0 else None
+    body_fat_diff          = (round(sma7_bf_start - sma7_bf_end, 1)
+                              if sma7_bf_start is not None and sma7_bf_end is not None else None)
+
     return {
-        'dates':          df['date'].tolist(),
-        'weights':        weights,
-        'calories':       calories,
-        'sma7':           sma7,
+        'dates':                  df['date'].tolist(),
+        'weights':                weights,
+        'calories':               calories,
+        'sma7':                   sma7,
+        'body_fat_percents':      _nullable_list(bf_series.round(1)),
+        'sma7_body_fat':          _nullable_list(sma7_bf),
+        'current_body_fat':       current_body_fat,
+        'sma7_body_fat_start':    sma7_bf_start,
+        'sma7_body_fat_end':      sma7_bf_end,
+        'sma7_body_fat_start_date': sma7_bf_start_date,
+        'sma7_body_fat_end_date':   sma7_bf_end_date,
+        'body_fat_diff':          body_fat_diff,
         'slope_dates':    [df['date'].iloc[i] for i in weekly_idx],
         'slope_values':   [all_slopes[i] for i in weekly_idx],
         'protein_gram':   df['protein_g'].round(1).tolist(),
@@ -172,8 +201,8 @@ def compute(items: list[dict]) -> dict:
     }
 
 
-def put_entry(user_id: str, date: str, weight=None, nutrition: dict | None = None,
-              targets: dict | None = None) -> None:
+def put_entry(user_id: str, date: str, weight=None, body_fat_percent=None,
+              nutrition: dict | None = None, targets: dict | None = None) -> None:
     """1日分を追加/更新する。存在しない日は前日のターゲット値を引き継ぐ。"""
     table = _get_table()
 
@@ -184,10 +213,12 @@ def put_entry(user_id: str, date: str, weight=None, nutrition: dict | None = Non
 
     item: dict = {'userId': user_id, 'date': date}
 
-    for field in ['weight'] + list(_NUTRITION_MAP.keys()):
+    for field in ['weight', 'body_fat_percent'] + list(_NUTRITION_MAP.keys()):
         db_key = field
         if field == 'weight':
             val = weight
+        elif field == 'body_fat_percent':
+            val = body_fat_percent
         elif nutrition:
             val = nutrition.get(field)
         else:
@@ -214,10 +245,10 @@ def delete_entry(user_id: str, date: str) -> None:
 
 def items_to_csv(items: list[dict]) -> str:
     """DynamoDB items → CSV 文字列（UTF-8 BOM付き）"""
-    fieldnames = ['date', 'weight', 'calories', 'protein_g', 'fat_g', 'carb_g',
+    fieldnames = ['date', 'weight', 'body_fat_percent', 'calories', 'protein_g', 'fat_g', 'carb_g',
                   'sugar_g', 'fiber_g', 'salt_g'] + _TARGET_FIELDS
     buf = io.StringIO()
-    buf.write('﻿')  # BOM
+    buf.write('﻿')  # UTF-8 BOM (Excel 用)
     writer = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction='ignore')
     writer.writeheader()
     for item in sorted(items, key=lambda x: x['date']):

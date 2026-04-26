@@ -5,11 +5,11 @@ import { filterData, xInterval, RangeDays } from './utils/filterData';
 import StatCard from './components/StatCard';
 import RangeFilter from './components/RangeFilter';
 import WeightChart from './components/WeightChart';
+import BodyFatChart from './components/BodyFatChart';
 import SlopeChart from './components/SlopeChart';
 import NutrientChart from './components/NutrientChart';
 import EmptyState from './components/EmptyState';
 import EntryForm from './components/EntryForm';
-import { apiEndpoint } from './aws-config';
 
 function useIsMobile(breakpoint = 600) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < breakpoint);
@@ -28,6 +28,26 @@ function Dashboard() {
   const [range, setRange] = useState<RangeDays>(null);
   const [showEntryForm, setShowEntryForm] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  async function handleCsvExport() {
+    setExporting(true);
+    try {
+      const res = await apiFetch('/api/export');
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'health_data.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`CSVエクスポートエラー: ${err}`);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const filtered = useMemo(
     () => (data ? filterData(data, range) : null),
@@ -91,7 +111,7 @@ function Dashboard() {
       <header className="header">
         <h1>健康管理分析ダッシュボード</h1>
         <div className="header-actions">
-          <a href={`${apiEndpoint.replace(/\/$/, '')}/api/export`} download="health_data.csv" className="btn btn-export">CSVエクスポート</a>
+          <button className="btn btn-export" onClick={handleCsvExport} disabled={exporting}>{exporting ? 'エクスポート中...' : 'CSVエクスポート'}</button>
           <button className="btn btn-entry" onClick={() => setShowEntryForm(true)}>データを入力する</button>
           <label className="btn" style={{ cursor: 'pointer' }}>
             {importing ? 'インポート中...' : 'CSVで更新する'}
@@ -119,6 +139,27 @@ function Dashboard() {
             </span>
           </>}
         />
+        {data.current_body_fat !== null && (
+          <StatCard
+            label="最新の体脂肪率"
+            value={`${data.current_body_fat} %`}
+            color="#8e44ad"
+            sub={<>
+              {filtered.body_fat_diff !== null && (filtered.body_fat_diff > 0
+                ? <span className="text-green fw-bold">▼ {filtered.body_fat_diff} % 減少（期間内SMA）</span>
+                : filtered.body_fat_diff < 0
+                ? <span className="text-red fw-bold">▲ {Math.abs(filtered.body_fat_diff)} % 増加（期間内SMA）</span>
+                : <span className="text-muted">変化なし</span>)}
+              {filtered.sma7_body_fat_start_date && filtered.sma7_body_fat_end_date && (
+                <span className="block text-muted mt-1">
+                  {filtered.sma7_body_fat_start_date}: <b>{filtered.sma7_body_fat_start} %</b>
+                  {' → '}
+                  {filtered.sma7_body_fat_end_date}: <b>{filtered.sma7_body_fat_end} %</b>
+                </span>
+              )}
+            </>}
+          />
+        )}
         <StatCard
           label="平均摂取カロリー"
           value={`${filtered.avg_cal} kcal`}
@@ -145,6 +186,16 @@ function Dashboard() {
           {n > 90 && <> グラフ下部のスライダーで表示範囲を絞り込めます。</>}
         </p>
         <WeightChart data={filtered} height={h.weight} xInterval={xi} />
+      </div>
+
+      <div className="chart-card">
+        <div className="chart-title">体脂肪率推移（7日SMA付き）</div>
+        <p className="chart-note">
+          体脂肪率の日次推移と7日SMAを表示します。
+          未記録の日はグラフに表示されず、SMA計算にも影響しません。
+          {n > 90 && <> グラフ下部のスライダーで表示範囲を絞り込めます。</>}
+        </p>
+        <BodyFatChart data={filtered} height={h.weight} xInterval={xi} />
       </div>
 
       <div className="chart-card">
