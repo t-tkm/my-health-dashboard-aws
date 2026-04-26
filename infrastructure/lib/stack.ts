@@ -58,7 +58,13 @@ export class HealthDashboardStack extends cdk.Stack {
     });
 
     // Amplify のデフォルトドメイン: main.<appId>.amplifyapp.com
-    const amplifyUrl = `https://main.${amplifyApp.attrDefaultDomain}`;
+    // ※ attrDefaultDomain を Cognito callbackUrls に使うと API GW → UserPoolClient → AmplifyApp →
+    //   api.url → API GW の循環依存が発生するため、AMPLIFY_DOMAIN 環境変数で2ステップ更新する。
+    //   Step1: cdk deploy（AMPLIFY_DOMAIN 未設定） → AmplifyAppUrl 出力を確認
+    //   Step2: AMPLIFY_DOMAIN=<出力値> cdk deploy → callbackUrls に追加
+    const amplifyDomain  = process.env.AMPLIFY_DOMAIN;
+    const amplifyUrl     = amplifyDomain ? `https://${amplifyDomain}` : null;
+    const callbackUrls   = ['http://localhost:5173', ...(amplifyUrl ? [amplifyUrl] : [])];
 
     // ------------------------------------------------------------------ Cognito User Pool
     const userPool = new cognito.UserPool(this, 'UserPool', {
@@ -129,8 +135,8 @@ export class HealthDashboardStack extends cdk.Stack {
           cognito.OAuthScope.OPENID,
           cognito.OAuthScope.PROFILE,
         ],
-        callbackUrls: ['http://localhost:5173', amplifyUrl],
-        logoutUrls:   ['http://localhost:5173', amplifyUrl],
+        callbackUrls,
+        logoutUrls: callbackUrls,
       },
       supportedIdentityProviders: [
         cognito.UserPoolClientIdentityProvider.COGNITO,
@@ -154,7 +160,7 @@ export class HealthDashboardStack extends cdk.Stack {
 
     const lambdaEnv: Record<string, string> = {
       TABLE_NAME:      table.tableName,
-      ALLOWED_ORIGINS: ['http://localhost:5173', amplifyUrl].join(','),
+      ALLOWED_ORIGINS: callbackUrls.join(','),
     };
 
     const backendDir = path.join(__dirname, '../../backend');
@@ -215,7 +221,7 @@ export class HealthDashboardStack extends cdk.Stack {
     apiRoot.addResource('export').addMethod('GET',  new apigw.LambdaIntegration(fnExport), auth);
     apiRoot.addResource('import').addMethod('POST', new apigw.LambdaIntegration(fnImport), auth);
 
-    // ------------------------------------------------------------------ Amplify 環境変数（CDK outputs を参照）
+    // Amplify 環境変数を CDK outputs から自動設定（循環依存を避けるため AmplifyApp → Api の一方向のみ）
     amplifyApp.environmentVariables = [
       { name: 'VITE_USER_POOL_ID',       value: userPool.userPoolId },
       { name: 'VITE_USER_POOL_CLIENT_ID', value: userPoolClient.userPoolClientId },
@@ -224,7 +230,10 @@ export class HealthDashboardStack extends cdk.Stack {
     ];
 
     // ------------------------------------------------------------------ Outputs
-    new cdk.CfnOutput(this, 'AmplifyAppUrl',    { value: amplifyUrl });
+    new cdk.CfnOutput(this, 'AmplifyAppUrl', {
+      value: `https://main.${amplifyApp.attrDefaultDomain}`,
+      description: 'Step2: export AMPLIFY_DOMAIN=main.<appId>.amplifyapp.com && cdk deploy',
+    });
     new cdk.CfnOutput(this, 'ApiEndpoint',      { value: api.url,                        exportName: 'ApiEndpoint' });
     new cdk.CfnOutput(this, 'UserPoolId',       { value: userPool.userPoolId,             exportName: 'UserPoolId' });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId, exportName: 'UserPoolClientId' });

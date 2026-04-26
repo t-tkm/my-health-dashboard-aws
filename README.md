@@ -152,7 +152,7 @@ CDK が Amplify と GitHub を連携するために PAT が必要。
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 ```
 
-### 2. CDK でインフラをデプロイ
+### 2. CDK でインフラをデプロイ（Step 1）
 
 Amplify アプリ・Cognito・Lambda・DynamoDB・API Gateway がすべて一括デプロイされる。
 
@@ -163,15 +163,25 @@ cdk bootstrap   # 初回のみ
 cdk deploy
 ```
 
-デプロイ後、出力に以下が表示される：
+デプロイ後、出力の `AmplifyAppUrl` を確認する：
 
 ```
 Outputs:
-  HealthDashboardStack.AmplifyAppUrl    = https://main.xxxxxxxxxx.amplifyapp.com
+  HealthDashboardStack.AmplifyAppUrl    = https://main.xxxxxxxxxx.amplifyapp.com  ← コピーしておく
   HealthDashboardStack.ApiEndpoint      = https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/prod/
   HealthDashboardStack.UserPoolId       = ap-northeast-1_xxxxxxxxx
   HealthDashboardStack.UserPoolClientId = xxxxxxxxxxxxxxxxxxxxxxxxxx
   HealthDashboardStack.CognitoDomain    = https://health-dashboard-xxxxxxxxxxxx.auth.ap-northeast-1.amazoncognito.com
+```
+
+### 3. Cognito に Amplify URL を追加（Step 2）
+
+Step 1 で取得した `AmplifyAppUrl` を `AMPLIFY_DOMAIN` に設定して再デプロイする。
+これにより Cognito の callbackUrls に本番 URL が追加される。
+
+```bash
+export AMPLIFY_DOMAIN=main.xxxxxxxxxx.amplifyapp.com   # https:// は不要
+cdk deploy
 ```
 
 `VITE_*` 環境変数は CDK が Amplify に自動設定するため、コンソールでの手動設定は不要。
