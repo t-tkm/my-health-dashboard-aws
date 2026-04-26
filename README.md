@@ -112,13 +112,33 @@ npm run dev
 - AWS CLI が設定済み（`aws configure`）
 - CDK がインストール済み（`npm install -g aws-cdk`）
 - CDK Bootstrap 済み（初回のみ: `cdk bootstrap`）
+- **デプロイ先 AWS アカウントへの認証・認可が通っていること**
+
+#### AWS SSO を使っている場合
+
+```bash
+# ログイン
+aws sso login --profile <your-profile>
+
+# 認証確認（アカウント ID とロールが表示されれば OK）
+aws sts get-caller-identity --profile <your-profile>
+```
+
+CDK コマンドにはプロファイルを明示する：
+
+```bash
+cdk bootstrap --profile <your-profile>   # 初回のみ
+cdk deploy    --profile <your-profile>
+```
+
+必要な権限の目安（管理者ロール推奨）：`dynamodb:*` / `lambda:*` / `apigateway:*` / `cognito-idp:*` / `iam:CreateRole` / `cloudformation:*` / `s3:*`
 
 ### 1. CDK でインフラをデプロイ
 
 ```bash
 cd infrastructure
 npm install
-cdk deploy
+cdk deploy --profile <your-profile>
 ```
 
 デプロイ後、出力に以下が表示される：
