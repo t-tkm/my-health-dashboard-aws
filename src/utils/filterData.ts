@@ -25,7 +25,7 @@ export function filterData(data: HealthData, days: RangeDays): HealthData {
   const validBf       = fBf.filter((v): v is number => v !== null);
   const currentBf     = validBf.length > 0 ? validBf[validBf.length - 1] : null;
   const firstBfSmaIdx = fBfSma.findIndex(v => v !== null);
-  const lastBfSmaIdx  = fBfSma.reduce((acc, v, i) => v !== null ? i : acc, -1);
+  const lastBfSmaIdx  = fBfSma.reduce<number>((acc, v, i) => v !== null ? i : acc, -1);
   const bfSmaStart    = firstBfSmaIdx >= 0 ? (fBfSma[firstBfSmaIdx] as number) : null;
   const bfSmaEnd      = lastBfSmaIdx  >= 0 ? (fBfSma[lastBfSmaIdx]  as number) : null;
 
