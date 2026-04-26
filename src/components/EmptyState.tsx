@@ -14,20 +14,17 @@ export default function EmptyState({ error }: Props) {
         <>
           <h2 className="empty-title">エラーが発生しました</h2>
           <p className="empty-desc">{error}</p>
+          <button className="btn-primary" onClick={() => window.location.reload()}>再読み込み</button>
         </>
       ) : (
         <>
           <h2 className="empty-title">データがありません</h2>
           <p className="empty-desc">
-            Excelファイル（.xlsx）をアップロードして<br />
-            ダッシュボードを表示しましょう。
+            ヘッダーの「データを入力する」または「CSVをインポートする」から<br />
+            データを登録してください。
           </p>
         </>
       )}
-
-      <a href="/upload" className="btn-primary">
-        {error ? '再アップロードする' : 'データをアップロードする'}
-      </a>
     </div>
   );
 }
