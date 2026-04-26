@@ -18,12 +18,12 @@
 - **Response** (200 OK):
   ```json
   {
-    "dates": ["2025-01-01", "2025-01-02", "..."],
-    "weights": [80.0, 79.8, "..."],
-    "sma7": [80.0, 79.9, "..."],
+    "dates": ["2025-01-01", "..."],
+    "weights": [80.0, "..."],
+    "sma7": [80.0, "..."],
     "slope_dates": ["2025-01-07", "..."],
     "slope_values": [-0.05, "..."],
-    "calories": [2000, 1800, "..."],
+    "calories": [2000, "..."],
     "protein_gram": [80.0, "..."],
     "fat_gram": [60.0, "..."],
     "carb_gram": [250.0, "..."],
@@ -67,25 +67,25 @@
     Content-Type: application/json
   Body:
   {
-    "date": "2025-01-15",           // 必須 (YYYY-MM-DD)
-    "weight": 79.5,                 // 任意
-    "calories": 2100,               // 任意
-    "protein_g": 85.0,              // 任意
-    "fat_g": 65.0,                  // 任意
-    "carb_g": 260.0,                // 任意
-    "sugar_g": 110.0,               // 任意
-    "fiber_g": 22.0,                // 任意
-    "salt_g": 5.5,                  // 任意
-    "cal_target": 2000.0,           // 任意
-    "protein_target": 80.0,         // 任意
-    "fat_target": 60.0,             // 任意
-    "carb_target": 250.0,           // 任意
-    "sugar_target": 100.0,          // 任意
-    "fiber_target": 20.0,           // 任意
-    "salt_target": 6.0              // 任意
+    "date": "2025-01-15",      // 必須 (YYYY-MM-DD)
+    "weight": 79.5,            // 任意
+    "calories": 2100,          // 任意
+    "protein_g": 85.0,         // 任意
+    "fat_g": 65.0,             // 任意
+    "carb_g": 260.0,           // 任意
+    "sugar_g": 110.0,          // 任意
+    "fiber_g": 22.0,           // 任意
+    "salt_g": 5.5,             // 任意
+    "cal_target": 2000.0,      // 任意
+    "protein_target": 80.0,    // 任意
+    "fat_target": 60.0,        // 任意
+    "carb_target": 250.0,      // 任意
+    "sugar_target": 100.0,     // 任意
+    "fiber_target": 20.0,      // 任意
+    "salt_target": 6.0         // 任意
   }
   ```
-- **Validation**: `date` は必須。`weight` か栄養素フィールド（calories 等）のどちらか一方以上が必要。
+- **Validation**: `date` は必須。`weight` か栄養素フィールドのどちらか一方以上が必要
 - **Response** (200): 更新後の HealthData JSON（GET /api/data と同形式）
 - **Response** (400): `{"error": "date は必須です"}` / `{"error": "体重か栄養素のどちらかを入力してください"}`
 - **Lambda**: `backend/lambda/entry.py` → `put_entry()` + `load_items()` + `compute()`
@@ -147,7 +147,7 @@
     Content-Type: text/csv
   Body: CSV バイナリデータ
   ```
-- **CSV 必須カラム（日本語）**:
+- **CSV カラムマッピング（日本語 → DB）**:
 
   | CSV カラム | DB 属性 |
   |---|---|
@@ -172,49 +172,10 @@
 - **Response** (200): `{"imported": N}` — インポートした件数
 - **Lambda**: `backend/lambda/import_csv.py` → `import_csv_to_dynamo()`
 
-## Internal APIs
+---
 
-### data_processor.py
-
-#### load_items(user_id: str) -> list[dict]
-- **Purpose**: DynamoDB から指定ユーザーの全レコードを日付昇順で返す
-- **Parameters**: `user_id` — Cognito sub (UUID)
-- **Return**: items のリスト。Decimal は float に変換済み。ページネーション対応。
-
-#### put_entry(user_id, date, weight, nutrition, targets) -> None
-- **Purpose**: 1日分のレコードを追加または更新（upsert）
-- **Parameters**: user_id, date (YYYY-MM-DD), weight (任意), nutrition dict (任意), targets dict (任意)
-- **Return**: None。既存レコードがあれば値をマージ。目安値は前回値をフォールバック。
-
-#### delete_entry(user_id: str, date: str) -> None
-- **Purpose**: 指定日のレコードを削除
-
-#### compute(items: list[dict]) -> dict
-- **Purpose**: DynamoDB items から React 向け HealthData dict を生成する
-- **Return**: HealthData dict（dates, weights, sma7, slope_dates, slope_values, nutrient arrays, targets, summary stats）
-- **Note**: データが空の場合 `{'error': 'no_data'}` を返す。体重欠損値は線形補間。
-
-#### items_to_csv(items: list[dict]) -> str
-- **Purpose**: DynamoDB items を CSV 文字列（UTF-8 BOM 付き）に変換
-
-#### import_csv_to_dynamo(user_id: str, file_storage) -> int
-- **Purpose**: CSV ファイルを DynamoDB に一括インポート
-- **Return**: インポートした行数
-
-### common.py
-
-#### get_user_id(event: dict) -> str | None
-- **Purpose**: Lambda event から Cognito JWT の sub claim を抽出
-- **Implementation**: `event['requestContext']['authorizer']['claims']['sub']`
-
-#### get_origin(event: dict) -> str | None
-- **Purpose**: リクエストヘッダーから Origin を抽出（CORS 制御用）
-
-#### ok(body: dict, origin: str) -> dict
-- **Purpose**: 200 レスポンス dict を生成（CORS ヘッダー付き）
-
-#### err(status: int, message: str, origin: str) -> dict
-- **Purpose**: エラーレスポンス dict を生成（CORS ヘッダー付き）
+> **Internal APIs（data_processor / common）のメソッド詳細**:  
+> → [`inception/application-design/component-methods.md`](../inception/application-design/component-methods.md)
 
 ## Data Models
 
@@ -240,6 +201,6 @@
 | fiber_target | Decimal | — | 食物繊維目標（g）|
 | salt_target | Decimal | — | 塩分目標（g）|
 
-- **Relationships**: なし（単一テーブル設計）
-- **Validation**: weight または nutrition の少なくとも一方が必須（entry.py で検証）
+- **設計**: 単一テーブル。userId がパーティションキーのためユーザー間のデータは完全に独立
+- **数値精度**: DynamoDB Decimal 型で保存（Python boto3 が float ↔ Decimal を相互変換）
 - **Billing**: PAY_PER_REQUEST（オンデマンド）
