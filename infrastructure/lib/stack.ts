@@ -77,7 +77,10 @@ export class HealthDashboardStack extends cdk.Stack {
     // ------------------------------------------------------------------ Cognito User Pool
     const userPool = new cognito.UserPool(this, 'UserPool', {
       userPoolName: 'health-dashboard-users',
-      selfSignUpEnabled: true,
+      // セルフサインアップを無効化（管理者のみがユーザーを作成できる）
+      // Cognito コンソール → ユーザープール → サインアップエクスペリエンス で ON/OFF 可能。
+      // ただし cdk deploy を実行すると、ここの設定値で上書きされる。
+      selfSignUpEnabled: false,
       signInAliases: { email: true },
       autoVerify: { email: true },
       passwordPolicy: {
