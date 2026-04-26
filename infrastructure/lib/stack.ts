@@ -184,6 +184,7 @@ export class HealthDashboardStack extends cdk.Stack {
     const makeFn = (id: string, handler: string, description: string) =>
       new lambda.Function(this, id, {
         runtime: lambda.Runtime.PYTHON_3_12,
+        architecture: lambda.Architecture.ARM_64,
         code: lambda.Code.fromAsset(backendDir, { bundling }),
         handler,
         functionName: `health-dashboard-${id.toLowerCase()}`,
