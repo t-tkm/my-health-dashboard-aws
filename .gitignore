@@ -24,3 +24,7 @@ infrastructure/.env
 # CDK
 infrastructure/dist/
 infrastructure/cdk.out/
+
+# 生成ファイル
+dummy_health_data.csv
+*.dummy.csv
