@@ -121,7 +121,7 @@ npm run dev
 事前に環境変数をセットしておくと、以降の `aws` / `cdk` コマンドで `--profile` を省略できる。
 
 ```bash
-export AWS_PROFILE=demo3-admin   # 使用するプロファイル名
+export AWS_PROFILE=your-profile   # 使用するプロファイル名
 export AWS_PAGER=                # ページャーを無効化（出力が止まらなくなる）
 ```
 
@@ -280,7 +280,7 @@ selfSignUpEnabled: true,
 
 ```bash
 export GITHUB_TOKEN=ghp_xxxx
-export AMPLIFY_DOMAIN=main.YOUR_OLD_AMPLIFY_APP_ID.amplifyapp.com
+export AMPLIFY_DOMAIN=main.xxxxxxxxxx.amplifyapp.com
 cd infrastructure && cdk deploy --require-approval never
 ```
 

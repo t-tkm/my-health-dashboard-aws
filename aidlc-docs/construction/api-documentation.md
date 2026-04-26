@@ -21,6 +21,8 @@
     "dates": ["2025-01-01", "..."],
     "weights": [80.0, "..."],
     "sma7": [80.0, "..."],
+    "body_fat_percents": [20.0, "..."],
+    "sma7_body_fat": [20.1, "..."],
     "slope_dates": ["2025-01-07", "..."],
     "slope_values": [-0.05, "..."],
     "calories": [2000, "..."],
@@ -186,6 +188,7 @@
 | userId | String | PK | Cognito sub（UUID）|
 | date | String | SK | YYYY-MM-DD 形式 |
 | weight | Decimal | — | 体重（kg）|
+| body_fat_percent | Decimal | — | 体脂肪率（%）|
 | calories | Decimal | — | 摂取カロリー（kcal）|
 | protein_g | Decimal | — | タンパク質（g）|
 | fat_g | Decimal | — | 脂質（g）|

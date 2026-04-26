@@ -1,4 +1,4 @@
-import sys, os, base64
+import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from data_processor import load_items, items_to_csv
@@ -26,6 +26,6 @@ def handler(event, context):
             'Content-Type': 'text/csv; charset=utf-8-sig',
             'Content-Disposition': 'attachment; filename="health_data.csv"',
         },
-        'body': base64.b64encode(csv_str.encode('utf-8-sig')).decode(),
-        'isBase64Encoded': True,
+        'body': csv_str,
+        'isBase64Encoded': False,
     }

@@ -178,6 +178,7 @@ export class HealthDashboardStack extends cdk.Stack {
 
     const bundling: cdk.BundlingOptions = {
       image: lambda.Runtime.PYTHON_3_12.bundlingImage,
+      platform: 'linux/arm64',  // ARM_64 Lambda 向けの wheels を取得するために必要
       command: [
         'bash', '-c',
         'pip install -r requirements.txt -t /asset-output && cp -r . /asset-output',
