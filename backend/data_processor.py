@@ -149,13 +149,30 @@ def compute(items: list[dict]) -> dict:
         return [round(float(v), 2) if not (isinstance(v, float) and np.isnan(v)) else None
                 for v in series.tolist()]
 
+    # 体脂肪サマリー（有効値のみ）
+    bf_valid_idx   = bf_series.dropna().index
+    sma7_bf_valid  = sma7_bf.dropna()
+    current_body_fat       = round(float(bf_series.loc[bf_valid_idx[-1]]), 1) if len(bf_valid_idx) > 0 else None
+    sma7_bf_start          = round(float(sma7_bf_valid.iloc[0]),  1) if len(sma7_bf_valid) > 0 else None
+    sma7_bf_end            = round(float(sma7_bf_valid.iloc[-1]), 1) if len(sma7_bf_valid) > 0 else None
+    sma7_bf_start_date     = df['date'].iloc[sma7_bf_valid.index[0]]  if len(sma7_bf_valid) > 0 else None
+    sma7_bf_end_date       = df['date'].iloc[sma7_bf_valid.index[-1]] if len(sma7_bf_valid) > 0 else None
+    body_fat_diff          = (round(sma7_bf_start - sma7_bf_end, 1)
+                              if sma7_bf_start is not None and sma7_bf_end is not None else None)
+
     return {
-        'dates':             df['date'].tolist(),
-        'weights':           weights,
-        'calories':          calories,
-        'sma7':              sma7,
-        'body_fat_percents': _nullable_list(bf_series.round(1)),
-        'sma7_body_fat':     _nullable_list(sma7_bf),
+        'dates':                  df['date'].tolist(),
+        'weights':                weights,
+        'calories':               calories,
+        'sma7':                   sma7,
+        'body_fat_percents':      _nullable_list(bf_series.round(1)),
+        'sma7_body_fat':          _nullable_list(sma7_bf),
+        'current_body_fat':       current_body_fat,
+        'sma7_body_fat_start':    sma7_bf_start,
+        'sma7_body_fat_end':      sma7_bf_end,
+        'sma7_body_fat_start_date': sma7_bf_start_date,
+        'sma7_body_fat_end_date':   sma7_bf_end_date,
+        'body_fat_diff':          body_fat_diff,
         'slope_dates':    [df['date'].iloc[i] for i in weekly_idx],
         'slope_values':   [all_slopes[i] for i in weekly_idx],
         'protein_gram':   df['protein_g'].round(1).tolist(),

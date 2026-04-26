@@ -22,14 +22,28 @@ export function filterData(data: HealthData, days: RangeDays): HealthData {
   const sma7Start = fSma7[0] ?? 0;
   const sma7End   = fSma7[fSma7.length - 1] ?? 0;
 
+  const validBf       = fBf.filter((v): v is number => v !== null);
+  const currentBf     = validBf.length > 0 ? validBf[validBf.length - 1] : null;
+  const firstBfSmaIdx = fBfSma.findIndex(v => v !== null);
+  const lastBfSmaIdx  = fBfSma.reduce((acc, v, i) => v !== null ? i : acc, -1);
+  const bfSmaStart    = firstBfSmaIdx >= 0 ? (fBfSma[firstBfSmaIdx] as number) : null;
+  const bfSmaEnd      = lastBfSmaIdx  >= 0 ? (fBfSma[lastBfSmaIdx]  as number) : null;
+
   return {
     ...data,
-    dates:             fDates,
-    weights:           fW,
-    calories:          fCals,
-    sma7:              fSma7,
-    body_fat_percents: fBf,
-    sma7_body_fat:     fBfSma,
+    dates:                    fDates,
+    weights:                  fW,
+    calories:                 fCals,
+    sma7:                     fSma7,
+    body_fat_percents:        fBf,
+    sma7_body_fat:            fBfSma,
+    current_body_fat:         currentBf,
+    sma7_body_fat_start:      bfSmaStart,
+    sma7_body_fat_end:        bfSmaEnd,
+    sma7_body_fat_start_date: firstBfSmaIdx >= 0 ? fDates[firstBfSmaIdx] : null,
+    sma7_body_fat_end_date:   lastBfSmaIdx  >= 0 ? fDates[lastBfSmaIdx]  : null,
+    body_fat_diff:            bfSmaStart !== null && bfSmaEnd !== null
+                                ? Math.round((bfSmaStart - bfSmaEnd) * 10) / 10 : null,
     slope_dates:       weekly(data.slope_dates),
     slope_values:      weekly(data.slope_values),
     protein_gram:      daily(data.protein_gram),
