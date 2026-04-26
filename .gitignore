@@ -28,3 +28,10 @@ infrastructure/cdk.out/
 # 生成ファイル
 dummy_health_data.csv
 *.dummy.csv
+
+# Kiro IDE - 自動生成・揮発的なファイルのみ除外（steering/は管理対象）
+.kiro/aws-aidlc-rule-details/
+.kiro/cache/
+.kiro/sessions/
+.kiro/**/*.log
+.kiro/local-settings.json
