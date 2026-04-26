@@ -116,19 +116,19 @@ npm run dev
 
 #### AWS SSO を使っている場合
 
-```bash
-# ログイン
-aws sso login --profile <your-profile>
+事前に環境変数をセットしておくと、以降の `aws` / `cdk` コマンドで `--profile` を省略できる。
 
-# 認証確認（アカウント ID とロールが表示されれば OK）
-aws sts get-caller-identity --profile <your-profile>
+```bash
+export AWS_PROFILE=demo3-admin   # 使用するプロファイル名
+export AWS_PAGER=                # ページャーを無効化（出力が止まらなくなる）
 ```
 
-CDK コマンドにはプロファイルを明示する：
-
 ```bash
-cdk bootstrap --profile <your-profile>   # 初回のみ
-cdk deploy    --profile <your-profile>
+# ログイン
+aws sso login
+
+# 認証確認（アカウント ID とロールが表示されれば OK）
+aws sts get-caller-identity
 ```
 
 必要な権限の目安（管理者ロール推奨）：`dynamodb:*` / `lambda:*` / `apigateway:*` / `cognito-idp:*` / `iam:CreateRole` / `cloudformation:*` / `s3:*`
@@ -138,7 +138,8 @@ cdk deploy    --profile <your-profile>
 ```bash
 cd infrastructure
 npm install
-cdk deploy --profile <your-profile>
+cdk bootstrap   # 初回のみ
+cdk deploy
 ```
 
 デプロイ後、出力に以下が表示される：
