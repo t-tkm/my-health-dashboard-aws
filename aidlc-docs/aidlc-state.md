@@ -2,7 +2,7 @@
 
 **Project**: my-health-dashboard-aws
 **Project Type**: Brownfield
-**Last Updated**: 2026-04-26T00:00:00Z
+**Last Updated**: 2026-04-26T10:30:00Z
 
 ## Stage Progress
 
@@ -15,13 +15,13 @@
 - [x] Application Design — Completed 2026-04-26
 - [ ] Units Generation — SKIP (ドキュメント整備のみ)
 
-### 🟢 CONSTRUCTION PHASE
+### 🟢 CONSTRUCTION PHASE — 体脂肪率グラフ機能追加
 - [ ] Functional Design — SKIP
 - [ ] NFR Requirements — SKIP
 - [ ] NFR Design — SKIP
-- [ ] Infrastructure Design — SKIP
-- [ ] Code Generation — SKIP
-- [ ] Build and Test — SKIP
+- [ ] Infrastructure Design — SKIP (既存 DynamoDB・Lambda を利用、スキーマ変更なし)
+- [x] Code Generation — Completed 2026-04-26 (体脂肪率グラフ機能)
+- [ ] Build and Test — 実装後手動確認
 
 ### 🟡 OPERATIONS PHASE
 - [ ] Operations — PLACEHOLDER
@@ -57,6 +57,6 @@
 
 ## Current Status
 
-- **Lifecycle Phase**: INCEPTION PHASE 完了
-- **Current Stage**: 全 inception ドキュメント整備完了
-- **Next Stage**: 将来の機能追加・保守タスク時に Requirements Analysis から再開
+- **Lifecycle Phase**: CONSTRUCTION PHASE（体脂肪率グラフ機能追加）
+- **Current Stage**: Code Generation 完了
+- **Next Stage**: デプロイ後の動作確認（Build and Test）

@@ -3,6 +3,8 @@ export interface HealthData {
   weights: number[];
   calories: number[];
   sma7: number[];
+  body_fat_percents: (number | null)[];
+  sma7_body_fat: (number | null)[];
   slope_dates: string[];
   slope_values: (number | null)[];
   protein_gram: number[];

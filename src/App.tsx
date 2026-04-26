@@ -5,6 +5,7 @@ import { filterData, xInterval, RangeDays } from './utils/filterData';
 import StatCard from './components/StatCard';
 import RangeFilter from './components/RangeFilter';
 import WeightChart from './components/WeightChart';
+import BodyFatChart from './components/BodyFatChart';
 import SlopeChart from './components/SlopeChart';
 import NutrientChart from './components/NutrientChart';
 import EmptyState from './components/EmptyState';
@@ -145,6 +146,16 @@ function Dashboard() {
           {n > 90 && <> グラフ下部のスライダーで表示範囲を絞り込めます。</>}
         </p>
         <WeightChart data={filtered} height={h.weight} xInterval={xi} />
+      </div>
+
+      <div className="chart-card">
+        <div className="chart-title">体脂肪率推移（7日SMA付き）</div>
+        <p className="chart-note">
+          体脂肪率の日次推移と7日SMAを表示します。
+          未記録の日はグラフに表示されず、SMA計算にも影響しません。
+          {n > 90 && <> グラフ下部のスライダーで表示範囲を絞り込めます。</>}
+        </p>
+        <BodyFatChart data={filtered} height={h.weight} xInterval={xi} />
       </div>
 
       <div className="chart-card">

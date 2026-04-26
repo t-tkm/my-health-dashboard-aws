@@ -13,6 +13,8 @@ export function filterData(data: HealthData, days: RangeDays): HealthData {
   const fW     = daily(data.weights);
   const fSma7  = daily(data.sma7);
   const fCals  = daily(data.calories);
+  const fBf    = daily(data.body_fat_percents);
+  const fBfSma = daily(data.sma7_body_fat);
 
   const slopeStart = data.slope_dates.findIndex(d => d >= cutDate);
   const weekly = <T>(arr: T[]) => arr.slice(slopeStart >= 0 ? slopeStart : 0);
@@ -22,13 +24,15 @@ export function filterData(data: HealthData, days: RangeDays): HealthData {
 
   return {
     ...data,
-    dates:        fDates,
-    weights:      fW,
-    calories:     fCals,
-    sma7:         fSma7,
-    slope_dates:  weekly(data.slope_dates),
-    slope_values: weekly(data.slope_values),
-    protein_gram: daily(data.protein_gram),
+    dates:             fDates,
+    weights:           fW,
+    calories:          fCals,
+    sma7:              fSma7,
+    body_fat_percents: fBf,
+    sma7_body_fat:     fBfSma,
+    slope_dates:       weekly(data.slope_dates),
+    slope_values:      weekly(data.slope_values),
+    protein_gram:      daily(data.protein_gram),
     fat_gram:     daily(data.fat_gram),
     carb_gram:    daily(data.carb_gram),
     sugar_gram:   daily(data.sugar_gram),
