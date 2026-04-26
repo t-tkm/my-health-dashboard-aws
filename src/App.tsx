@@ -139,6 +139,27 @@ function Dashboard() {
             </span>
           </>}
         />
+        {data.current_body_fat !== null && (
+          <StatCard
+            label="最新の体脂肪率"
+            value={`${data.current_body_fat} %`}
+            color="#8e44ad"
+            sub={<>
+              {filtered.body_fat_diff !== null && (filtered.body_fat_diff > 0
+                ? <span className="text-green fw-bold">▼ {filtered.body_fat_diff} % 減少（期間内SMA）</span>
+                : filtered.body_fat_diff < 0
+                ? <span className="text-red fw-bold">▲ {Math.abs(filtered.body_fat_diff)} % 増加（期間内SMA）</span>
+                : <span className="text-muted">変化なし</span>)}
+              {filtered.sma7_body_fat_start_date && filtered.sma7_body_fat_end_date && (
+                <span className="block text-muted mt-1">
+                  {filtered.sma7_body_fat_start_date}: <b>{filtered.sma7_body_fat_start} %</b>
+                  {' → '}
+                  {filtered.sma7_body_fat_end_date}: <b>{filtered.sma7_body_fat_end} %</b>
+                </span>
+              )}
+            </>}
+          />
+        )}
         <StatCard
           label="平均摂取カロリー"
           value={`${filtered.avg_cal} kcal`}

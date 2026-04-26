@@ -5,6 +5,12 @@ export interface HealthData {
   sma7: number[];
   body_fat_percents: (number | null)[];
   sma7_body_fat: (number | null)[];
+  current_body_fat: number | null;
+  sma7_body_fat_start: number | null;
+  sma7_body_fat_end: number | null;
+  sma7_body_fat_start_date: string | null;
+  sma7_body_fat_end_date: string | null;
+  body_fat_diff: number | null;
   slope_dates: string[];
   slope_values: (number | null)[];
   protein_gram: number[];
