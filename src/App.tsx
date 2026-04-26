@@ -53,17 +53,25 @@ function Dashboard() {
   }
 
   if (loading) return <div className="center-message">読み込み中...</div>;
-  if (error) return <EmptyState error={error} />;
-  if (isEmpty || !data || !filtered) return (
-    <>
-      <EmptyState />
-      <div style={{ textAlign: 'center', marginTop: 16 }}>
-        <label className="btn" style={{ cursor: 'pointer' }}>
-          {importing ? 'インポート中...' : 'CSVをインポートする'}
-          <input type="file" accept=".csv" hidden onChange={handleCsvImport} disabled={importing} />
-        </label>
-      </div>
-    </>
+
+  if (error || isEmpty || !data || !filtered) return (
+    <div className="dashboard">
+      {showEntryForm && (
+        <EntryForm data={null} onClose={() => setShowEntryForm(false)} onSaved={refresh} />
+      )}
+      <header className="header">
+        <h1>健康管理分析ダッシュボード</h1>
+        <div className="header-actions">
+          <button className="btn btn-entry" onClick={() => setShowEntryForm(true)}>データを入力する</button>
+          <label className="btn" style={{ cursor: 'pointer' }}>
+            {importing ? 'インポート中...' : 'CSVをインポートする'}
+            <input type="file" accept=".csv" hidden onChange={handleCsvImport} disabled={importing} />
+          </label>
+          <button className="btn" onClick={signOut} title={user?.signInDetails?.loginId}>ログアウト</button>
+        </div>
+      </header>
+      <EmptyState error={error} />
+    </div>
   );
 
 
