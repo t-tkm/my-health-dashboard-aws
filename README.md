@@ -145,7 +145,7 @@ CDK が Amplify と GitHub を連携するために PAT が必要。
 6. 以下を設定して **Generate token**：
    - Note: `amplify-cdk`（任意）
    - Expiration: 任意
-   - Scope: **`repo`** にチェック
+   - Scope: **`repo`** と **`admin:repo_hook`** にチェック（Amplify が webhook を作成するために必要）
 7. 表示されたトークン（`ghp_xxx...`）をコピー（この画面を閉じると二度と表示されない）
 
 ```bash
@@ -197,6 +197,32 @@ cdk deploy
 | Apple | [Apple Developer](https://developer.apple.com/) |
 | Facebook | [Meta for Developers](https://developers.facebook.com/) |
 | Amazon | [Amazon Developer](https://developer.amazon.com/) |
+
+---
+
+## ダミー CSV の生成（動作確認用）
+
+Web UI の「CSVをインポートする」で使えるダミーデータを生成できる。
+
+```bash
+# 依存インストール（初回のみ）
+pip install pandas   # または: uv run python scripts/generate_dummy_csv.py
+
+# 1年分（デフォルト）生成
+python scripts/generate_dummy_csv.py
+
+# 期間・ファイル名を指定
+python scripts/generate_dummy_csv.py --days 90 --out test_data.csv
+```
+
+生成した `dummy_health_data.csv` をブラウザの「CSVをインポートする」ボタンでアップロードするとダッシュボードが表示される。
+
+| オプション | デフォルト | 説明 |
+|---|---|---|
+| `--days` | `365` | 生成する日数 |
+| `--out` | `dummy_health_data.csv` | 出力ファイル名 |
+| `--weight-start` | `80.0` | 開始体重（kg） |
+| `--weight-end` | `73.5` | 終了体重（kg） |
 
 ---
 
