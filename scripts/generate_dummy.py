@@ -27,8 +27,10 @@ TODAY = date.today()
 START = TODAY - timedelta(days=N_DAYS - 1)
 DATES = [(START + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(N_DAYS)]
 
-WEIGHT_START = 80.0
-WEIGHT_END   = 73.5
+WEIGHT_START   = 80.0
+WEIGHT_END     = 73.5
+BF_START       = 22.0   # 体脂肪率 開始値 (%)
+BF_END         = 17.5   # 体脂肪率 終了値 (%)
 
 TARGETS = {
     'cal_target':     1750,
@@ -43,19 +45,29 @@ TARGETS = {
 
 def build_items(user_id: str) -> list[dict]:
     raw_weights = []
+    raw_bf      = []
     for i in range(N_DAYS):
         progress = i / (N_DAYS - 1)
-        trend   = WEIGHT_START + (WEIGHT_END - WEIGHT_START) * (1 - math.exp(-3 * progress))
+        # 体重
+        trend  = WEIGHT_START + (WEIGHT_END - WEIGHT_START) * (1 - math.exp(-3 * progress))
         weekday = (START + timedelta(days=i)).weekday()
-        weekly  = 0.25 * math.sin(2 * math.pi * weekday / 7)
-        noise   = random.gauss(0, 0.25)
-        raw_weights.append(trend + weekly + noise)
+        weekly = 0.25 * math.sin(2 * math.pi * weekday / 7)
+        raw_weights.append(trend + weekly + random.gauss(0, 0.25))
+        # 体脂肪率（体重と連動して緩やかに低下）
+        bf_trend = BF_START + (BF_END - BF_START) * (1 - math.exp(-3 * progress))
+        raw_bf.append(bf_trend + random.gauss(0, 0.4))
 
     weights = []
     for i in range(N_DAYS):
         s = max(0, i - 1)
         e = min(N_DAYS, i + 2)
         weights.append(round(sum(raw_weights[s:e]) / (e - s), 1))
+
+    body_fats = []
+    for i in range(N_DAYS):
+        s = max(0, i - 1)
+        e = min(N_DAYS, i + 2)
+        body_fats.append(round(sum(raw_bf[s:e]) / (e - s), 1))
 
     items = []
     for i, d in enumerate(DATES):
@@ -64,9 +76,10 @@ def build_items(user_id: str) -> list[dict]:
         cal = max(800, round(random.gauss(cal_base, 200)))
         scale = cal / 1750
         item = {
-            'userId':  user_id,
-            'date':    d,
-            'weight':  _to_decimal(weights[i]),
+            'userId':           user_id,
+            'date':             d,
+            'weight':           _to_decimal(weights[i]),
+            'body_fat_percent': _to_decimal(body_fats[i]),
             'calories':  _to_decimal(float(cal)),
             'protein_g': _to_decimal(round(max(40,  random.gauss(95 * scale, 15)), 1)),
             'fat_g':     _to_decimal(round(max(20,  random.gauss(85 * scale, 12)), 1)),
@@ -134,7 +147,8 @@ def main() -> None:
             batch.put_item(Item=item)
 
     print(f'{N_DAYS} 件のダミーデータを userId={args.user_id} で投入しました。')
-    print(f'  体重: {float(items[0]["weight"]):.1f} → {float(items[-1]["weight"]):.1f} kg')
+    print(f'  体重:     {float(items[0]["weight"]):.1f} → {float(items[-1]["weight"]):.1f} kg')
+    print(f'  体脂肪率: {float(items[0]["body_fat_percent"]):.1f} → {float(items[-1]["body_fat_percent"]):.1f} %')
 
 
 if __name__ == '__main__':

@@ -22,25 +22,37 @@ def main() -> None:
     parser.add_argument('--out',  default='dummy_health_data.csv', help='出力ファイル名')
     parser.add_argument('--weight-start', type=float, default=80.0)
     parser.add_argument('--weight-end',   type=float, default=73.5)
+    parser.add_argument('--bf-start',     type=float, default=22.0, help='体脂肪率 開始値 (%)')
+    parser.add_argument('--bf-end',       type=float, default=17.5, help='体脂肪率 終了値 (%)')
     args = parser.parse_args()
 
     today = date.today()
     start = today - timedelta(days=args.days - 1)
 
     raw_weights = []
+    raw_bf      = []
     for i in range(args.days):
         progress = i / max(args.days - 1, 1)
-        trend   = args.weight_start + (args.weight_end - args.weight_start) * (1 - math.exp(-3 * progress))
+        # 体重
+        trend  = args.weight_start + (args.weight_end - args.weight_start) * (1 - math.exp(-3 * progress))
         weekday = (start + timedelta(days=i)).weekday()
-        weekly  = 0.25 * math.sin(2 * math.pi * weekday / 7)
-        noise   = random.gauss(0, 0.25)
-        raw_weights.append(trend + weekly + noise)
+        weekly = 0.25 * math.sin(2 * math.pi * weekday / 7)
+        raw_weights.append(trend + weekly + random.gauss(0, 0.25))
+        # 体脂肪率
+        bf_trend = args.bf_start + (args.bf_end - args.bf_start) * (1 - math.exp(-3 * progress))
+        raw_bf.append(bf_trend + random.gauss(0, 0.4))
 
     weights = []
     for i in range(args.days):
         s = max(0, i - 1)
         e = min(args.days, i + 2)
         weights.append(round(sum(raw_weights[s:e]) / (e - s), 1))
+
+    body_fats = []
+    for i in range(args.days):
+        s = max(0, i - 1)
+        e = min(args.days, i + 2)
+        body_fats.append(round(sum(raw_bf[s:e]) / (e - s), 1))
 
     rows = []
     for i in range(args.days):
@@ -52,6 +64,7 @@ def main() -> None:
         rows.append({
             '日付':          d.strftime('%Y/%m/%d'),
             '体重':          weights[i],
+            '体脂肪率':      body_fats[i],
             'カロリー':       cal,
             'たんぱく質':     round(max(40,  random.gauss(95 * scale, 15)), 1),
             '脂質':           round(max(20,  random.gauss(85 * scale, 12)), 1),
@@ -74,7 +87,9 @@ def main() -> None:
         writer.writerows(rows)
 
     print(f'{len(rows)} 件のダミーデータを {args.out} に出力しました。')
-    print(f'期間: {rows[0]["日付"]} 〜 {rows[-1]["日付"]}')
+    print(f'期間:     {rows[0]["日付"]} 〜 {rows[-1]["日付"]}')
+    print(f'体重:     {rows[0]["体重"]} → {rows[-1]["体重"]} kg')
+    print(f'体脂肪率: {rows[0]["体脂肪率"]} → {rows[-1]["体脂肪率"]} %')
 
 
 if __name__ == '__main__':
