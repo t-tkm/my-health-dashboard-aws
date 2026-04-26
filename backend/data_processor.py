@@ -237,12 +237,14 @@ def import_csv_to_dynamo(user_id: str, file_storage) -> int:
     df.rename(columns=_CSV_TO_DB, inplace=True)
     df['date'] = pd.to_datetime(df['date']).dt.strftime('%Y-%m-%d')
 
+    numeric_cols = [v for v in _CSV_TO_DB.values() if v != 'date']
+
     table = _get_table()
     with table.batch_writer() as batch:
         for _, row in df.iterrows():
             item = {'userId': user_id, 'date': row['date']}
-            for col in df.columns:
-                if col in ('userId', 'date'):
+            for col in numeric_cols:
+                if col not in df.columns:
                     continue
                 val = row.get(col)
                 if pd.notna(val):
