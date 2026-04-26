@@ -61,7 +61,6 @@ export default function EntryForm({ data, onClose, onSaved }: Props) {
   const initialDate = today();
   const [form, setForm] = useState<FormState>({
     date: initialDate,
-    body_fat_percent: '',
     ...valuesForDate(data, initialDate),
   });
   const [submitting, setSubmitting] = useState(false);
