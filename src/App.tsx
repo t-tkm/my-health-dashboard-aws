@@ -10,7 +10,6 @@ import SlopeChart from './components/SlopeChart';
 import NutrientChart from './components/NutrientChart';
 import EmptyState from './components/EmptyState';
 import EntryForm from './components/EntryForm';
-import { apiEndpoint } from './aws-config';
 
 function useIsMobile(breakpoint = 600) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < breakpoint);
@@ -29,6 +28,26 @@ function Dashboard() {
   const [range, setRange] = useState<RangeDays>(null);
   const [showEntryForm, setShowEntryForm] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  async function handleCsvExport() {
+    setExporting(true);
+    try {
+      const res = await apiFetch('/api/export');
+      if (!res.ok) throw new Error(await res.text());
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'health_data.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      alert(`CSVエクスポートエラー: ${err}`);
+    } finally {
+      setExporting(false);
+    }
+  }
 
   const filtered = useMemo(
     () => (data ? filterData(data, range) : null),
@@ -92,7 +111,7 @@ function Dashboard() {
       <header className="header">
         <h1>健康管理分析ダッシュボード</h1>
         <div className="header-actions">
-          <a href={`${apiEndpoint.replace(/\/$/, '')}/api/export`} download="health_data.csv" className="btn btn-export">CSVエクスポート</a>
+          <button className="btn btn-export" onClick={handleCsvExport} disabled={exporting}>{exporting ? 'エクスポート中...' : 'CSVエクスポート'}</button>
           <button className="btn btn-entry" onClick={() => setShowEntryForm(true)}>データを入力する</button>
           <label className="btn" style={{ cursor: 'pointer' }}>
             {importing ? 'インポート中...' : 'CSVで更新する'}
