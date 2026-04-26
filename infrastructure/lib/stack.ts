@@ -3,6 +3,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
+import * as amplify from 'aws-cdk-lib/aws-amplify';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -10,14 +11,54 @@ export class HealthDashboardStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
+    const githubToken = process.env.GITHUB_TOKEN;
+    if (!githubToken) {
+      throw new Error('環境変数 GITHUB_TOKEN を設定してください（GitHub Personal Access Token）');
+    }
+
     // ------------------------------------------------------------------ DynamoDB
     const table = new dynamodb.Table(this, 'HealthEntries', {
       tableName: 'health-entries',
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       sortKey:      { name: 'date',   type: dynamodb.AttributeType.STRING },
       billingMode:  dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
+
+    // ------------------------------------------------------------------ Amplify App
+    // GitHub Token は cdk deploy 前に export GITHUB_TOKEN=<PAT> で設定する
+    const amplifyApp = new amplify.CfnApp(this, 'AmplifyApp', {
+      name: 'health-dashboard',
+      repository: 'https://github.com/t-tkm/my-health-dashboard-aws',
+      oauthToken: githubToken,
+      buildSpec: [
+        'version: 1',
+        'frontend:',
+        '  phases:',
+        '    preBuild:',
+        '      commands:',
+        '        - npm ci',
+        '    build:',
+        '      commands:',
+        '        - npm run build',
+        '  artifacts:',
+        '    baseDirectory: dist',
+        '    files:',
+        "      - '**/*'",
+        '  cache:',
+        '    paths:',
+        "      - node_modules/**/*",
+      ].join('\n'),
+    });
+
+    new amplify.CfnBranch(this, 'MainBranch', {
+      appId: amplifyApp.attrAppId,
+      branchName: 'main',
+      enableAutoBuild: true,
+    });
+
+    // Amplify のデフォルトドメイン: main.<appId>.amplifyapp.com
+    const amplifyUrl = `https://main.${amplifyApp.attrDefaultDomain}`;
 
     // ------------------------------------------------------------------ Cognito User Pool
     const userPool = new cognito.UserPool(this, 'UserPool', {
@@ -33,7 +74,7 @@ export class HealthDashboardStack extends cdk.Stack {
         requireSymbols: false,
       },
       accountRecovery: cognito.AccountRecovery.EMAIL_ONLY,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     // Social IdP — OAuth credentials must be obtained from each provider's developer console.
@@ -77,13 +118,6 @@ export class HealthDashboardStack extends cdk.Stack {
     //   attributeMapping: { email: cognito.ProviderAttribute.AMAZON_EMAIL },
     // });
 
-    // Amplify ホスティングのドメインは deploy 後に判明するため、
-    // 環境変数 AMPLIFY_DOMAIN で上書きできるようにしている
-    const amplifyDomain = process.env.AMPLIFY_DOMAIN ?? 'localhost:5173';
-    const callbackBase  = amplifyDomain === 'localhost:5173'
-      ? 'http://localhost:5173'
-      : `https://${amplifyDomain}`;
-
     const userPoolClient = new cognito.UserPoolClient(this, 'UserPoolClient', {
       userPool,
       userPoolClientName: 'health-dashboard-web',
@@ -95,10 +129,9 @@ export class HealthDashboardStack extends cdk.Stack {
           cognito.OAuthScope.OPENID,
           cognito.OAuthScope.PROFILE,
         ],
-        callbackUrls: ['http://localhost:5173', callbackBase].filter((v, i, a) => a.indexOf(v) === i),
-        logoutUrls:   ['http://localhost:5173', callbackBase].filter((v, i, a) => a.indexOf(v) === i),
+        callbackUrls: ['http://localhost:5173', amplifyUrl],
+        logoutUrls:   ['http://localhost:5173', amplifyUrl],
       },
-      // IdP を追加したらここにも追加する
       supportedIdentityProviders: [
         cognito.UserPoolClientIdentityProvider.COGNITO,
         // cognito.UserPoolClientIdentityProvider.GOOGLE,
@@ -117,11 +150,11 @@ export class HealthDashboardStack extends cdk.Stack {
     });
 
     // ------------------------------------------------------------------ Lambda
+    const cognitoDomainUrl = `https://health-dashboard-${this.account}.auth.${this.region}.amazoncognito.com`;
+
     const lambdaEnv: Record<string, string> = {
       TABLE_NAME:      table.tableName,
-      ALLOWED_ORIGINS: ['http://localhost:5173', callbackBase]
-        .filter((v, i, a) => a.indexOf(v) === i)
-        .join(','),
+      ALLOWED_ORIGINS: ['http://localhost:5173', amplifyUrl].join(','),
     };
 
     const backendDir = path.join(__dirname, '../../backend');
@@ -182,13 +215,19 @@ export class HealthDashboardStack extends cdk.Stack {
     apiRoot.addResource('export').addMethod('GET',  new apigw.LambdaIntegration(fnExport), auth);
     apiRoot.addResource('import').addMethod('POST', new apigw.LambdaIntegration(fnImport), auth);
 
+    // ------------------------------------------------------------------ Amplify 環境変数（CDK outputs を参照）
+    amplifyApp.environmentVariables = [
+      { name: 'VITE_USER_POOL_ID',       value: userPool.userPoolId },
+      { name: 'VITE_USER_POOL_CLIENT_ID', value: userPoolClient.userPoolClientId },
+      { name: 'VITE_COGNITO_DOMAIN',      value: cognitoDomainUrl },
+      { name: 'VITE_API_ENDPOINT',        value: api.url },
+    ];
+
     // ------------------------------------------------------------------ Outputs
-    new cdk.CfnOutput(this, 'ApiEndpoint',      { value: api.url,                       exportName: 'ApiEndpoint' });
-    new cdk.CfnOutput(this, 'UserPoolId',       { value: userPool.userPoolId,            exportName: 'UserPoolId' });
+    new cdk.CfnOutput(this, 'AmplifyAppUrl',    { value: amplifyUrl });
+    new cdk.CfnOutput(this, 'ApiEndpoint',      { value: api.url,                        exportName: 'ApiEndpoint' });
+    new cdk.CfnOutput(this, 'UserPoolId',       { value: userPool.userPoolId,             exportName: 'UserPoolId' });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId, exportName: 'UserPoolClientId' });
-    new cdk.CfnOutput(this, 'CognitoDomain',    {
-      value: `https://health-dashboard-${this.account}.auth.${this.region}.amazoncognito.com`,
-      exportName: 'CognitoDomain',
-    });
+    new cdk.CfnOutput(this, 'CognitoDomain',    { value: cognitoDomainUrl,                exportName: 'CognitoDomain' });
   }
 }
