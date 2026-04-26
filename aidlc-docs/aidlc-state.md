@@ -32,17 +32,18 @@
 ## Reverse Engineering Status
 
 - [x] Reverse Engineering — Completed on 2026-04-26T00:00:00Z
-- **Artifacts Location**: `aidlc-docs/inception/reverse-engineering/`
 - **Artifacts**:
-  - [x] business-overview.md
-  - [x] architecture.md
-  - [x] code-structure.md
-  - [x] api-documentation.md
-  - [x] component-inventory.md
-  - [x] technology-stack.md
-  - [x] dependencies.md
-  - [x] code-quality-assessment.md
-  - [x] reverse-engineering-timestamp.md
+  - inception/ (WHAT/WHY)
+    - [x] business-overview.md
+    - [x] architecture.md
+    - [x] component-inventory.md
+    - [x] analysis-metadata.md
+  - construction/ (HOW)
+    - [x] code-structure.md
+    - [x] api-documentation.md
+    - [x] technology-stack.md
+    - [x] dependencies.md
+    - [x] code-quality-assessment.md
 
 ## Extension Configuration
 
