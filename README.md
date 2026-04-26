@@ -137,9 +137,16 @@ aws sts get-caller-identity
 
 CDK が Amplify と GitHub を連携するために PAT が必要。
 
-1. GitHub → Settings → Developer settings → Personal access tokens → Generate new token
-2. スコープ: `repo` にチェック
-3. 生成されたトークンを環境変数にセット：
+1. GitHub にログイン
+2. 右上アイコン → **Settings**
+3. 左メニュー最下部 → **Developer settings**
+4. **Personal access tokens** → **Tokens (classic)**
+5. **Generate new token** → **Generate new token (classic)**
+6. 以下を設定して **Generate token**：
+   - Note: `amplify-cdk`（任意）
+   - Expiration: 任意
+   - Scope: **`repo`** にチェック
+7. 表示されたトークン（`ghp_xxx...`）をコピー（この画面を閉じると二度と表示されない）
 
 ```bash
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
