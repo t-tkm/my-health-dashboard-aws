@@ -249,6 +249,51 @@ python scripts/migrate_csv_to_dynamodb.py \
 
 ---
 
+## ユーザー管理（Cognito）
+
+### セルフサインアップ
+
+デフォルトは **無効**（`selfSignUpEnabled: false`）。管理者が作成したユーザーのみサインインできる。
+
+#### 方法 A：コンソールで一時的に有効化（次回 `cdk deploy` で元に戻る）
+
+1. [Cognito コンソール](https://ap-northeast-1.console.aws.amazon.com/cognito/v2/idp/user-pools) を開く
+2. ユーザープール `health-dashboard-users` を選択
+3. **サインアップエクスペリエンス** タブ → **セルフサービスのサインアップ** → **編集**
+4. 「セルフサービスのサインアップを有効にする」をオンにして保存
+
+> ⚠️ 次回 `cdk deploy` を実行すると `false`（無効）に戻る。
+
+#### 方法 B：CDK で恒久的に有効化
+
+`infrastructure/lib/stack.ts` を編集：
+
+```typescript
+// 変更前
+selfSignUpEnabled: false,
+
+// 変更後
+selfSignUpEnabled: true,
+```
+
+変更後に再デプロイ：
+
+```bash
+export GITHUB_TOKEN=ghp_xxxx
+export AMPLIFY_DOMAIN=main.dx658lz9lnttf.amplifyapp.com
+cd infrastructure && cdk deploy --require-approval never
+```
+
+### 管理者によるユーザー作成
+
+セルフサインアップが無効の状態でも、コンソールからユーザーを手動作成できる：
+
+1. Cognito コンソール → ユーザープール `health-dashboard-users`
+2. **ユーザー** タブ → **ユーザーを作成**
+3. メールアドレスを入力し、仮パスワードを設定（初回ログイン時に変更を求められる）
+
+---
+
 ## リソースの削除（クリーンアップ）
 
 すべての AWS リソースを一括削除できる：
