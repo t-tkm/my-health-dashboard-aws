@@ -259,3 +259,36 @@ docker-compose
 | `avg_cal` | `int` | 平均摂取カロリー |
 | `record_days` | `int` | データ日数 |
 | `weight_min` / `weight_max` | `float` | グラフ Y 軸範囲（±1kg マージン付き） |
+
+---
+
+## 付録：cdk deploy 時に Docker イメージがダウンロードされる理由
+
+`cdk deploy` 実行時に `public.ecr.aws/sam/build-python3.12:latest` が pull されるのは、
+`infrastructure/lib/stack.ts` の Lambda バンドル設定が原因。
+
+```typescript
+const bundling: cdk.BundlingOptions = {
+  image: lambda.Runtime.PYTHON_3_12.bundlingImage, // SAM ビルドイメージを使用
+  command: [
+    'bash', '-c',
+    'pip install -r requirements.txt -t /asset-output && cp -r . /asset-output',
+  ],
+};
+```
+
+### なぜ Docker ビルドが必要か
+
+`backend/requirements.txt` に含まれる `pandas` / `numpy` は **C 拡張（ネイティブバイナリ）** を持つ。
+
+| 環境 | ABI |
+|---|---|
+| macOS（開発機） | arm64 / x86_64 macOS |
+| Lambda 実行環境 | x86_64 Amazon Linux 2 |
+
+macOS でビルドしたバイナリをそのまま Lambda に上げると ABI 不一致でクラッシュする。
+SAM ビルドイメージは Lambda と同じ Amazon Linux 2 環境のため、そこで `pip install` することで互換性のあるバイナリが生成される。
+
+### Docker ビルドを省略したい場合
+
+`pandas` / `numpy` を Lambda Layer（AWS 公式提供）に切り替え、コード側の依存を `boto3` のみにすれば Docker 不要になる。ただし現状の `compute()` は pandas に依存しているため、Layer 化には data_processor.py のリファクタリングが必要。
