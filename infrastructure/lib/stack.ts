@@ -126,7 +126,7 @@ export class HealthDashboardStack extends cdk.Stack {
 
     const backendDir = path.join(__dirname, '../../backend');
 
-    const bundling: lambda.BundlingOptions = {
+    const bundling: cdk.BundlingOptions = {
       image: lambda.Runtime.PYTHON_3_12.bundlingImage,
       command: [
         'bash', '-c',
