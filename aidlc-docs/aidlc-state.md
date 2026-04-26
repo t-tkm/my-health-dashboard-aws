@@ -31,8 +31,6 @@
 ### inception/
 - [x] business-overview.md — ビジネスコンテキスト・業務取引
 - [x] architecture.md — システムアーキテクチャ図
-- [x] component-inventory.md — コンポーネント・AWSサービス一覧
-- [x] analysis-metadata.md — 分析メタデータ
 - [x] requirements/requirements.md — 機能・非機能要件
 - [x] user-stories/personas.md — ユーザーペルソナ（2種）
 - [x] user-stories/stories.md — ユーザーストーリー（US-01〜09）
