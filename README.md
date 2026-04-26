@@ -20,7 +20,7 @@ AWS Amplify Hosting + Lambda + DynamoDB + Cognito をベースとしたサーバ
 |---|---|
 | フロントエンド | React 18 + TypeScript + Vite + Recharts + Amplify UI |
 | 認証 | Amazon Cognito（SNS IdP: Google / Apple / Facebook / Amazon） |
-| バックエンド | AWS Lambda（Python 3.12） + Amazon API Gateway |
+| バックエンド | AWS Lambda（Python 3.12 / ARM_64） + Amazon API Gateway |
 | データベース | Amazon DynamoDB（オンデマンドキャパシティ） |
 | ホスティング | AWS Amplify Hosting |
 | IaC | AWS CDK（TypeScript） |
@@ -32,10 +32,12 @@ my-health-dashboard-aws/
 ├── src/                        # React フロントエンド
 │   ├── App.tsx
 │   ├── aws-config.ts           # Amplify / Cognito / API 設定
+│   ├── vite-env.d.ts           # import.meta.env 型定義
 │   ├── hooks/useHealthData.ts  # API フェッチ（JWT 付き）
 │   ├── components/
 │   └── ...
 ├── backend/                    # Lambda バックエンド
+│   ├── common.py               # CORS ヘッダー・認証ユーティリティ
 │   ├── data_processor.py       # DynamoDB 読み書き・集計ロジック
 │   ├── lambda/
 │   │   ├── data.py             # GET /api/data
@@ -45,13 +47,13 @@ my-health-dashboard-aws/
 │   └── requirements.txt
 ├── infrastructure/             # AWS CDK スタック
 │   ├── bin/app.ts
-│   ├── lib/stack.ts            # DynamoDB / Lambda / API GW / Cognito
+│   ├── lib/stack.ts            # DynamoDB / Lambda / API GW / Cognito / Amplify
 │   └── package.json
 ├── scripts/
 │   ├── generate_dummy.py       # DynamoDB Local へダミーデータ投入
+│   ├── generate_dummy_csv.py   # Web UI インポート用ダミー CSV 生成
 │   └── migrate_csv_to_dynamodb.py  # 既存 CSV → DynamoDB 移行
 ├── docker-compose.yml          # DynamoDB Local（ローカル開発用）
-├── amplify.yml                 # Amplify Hosting ビルド設定
 ├── .env.local.example          # ローカル開発用 環境変数テンプレート
 ├── index.html                  # Vite エントリ HTML
 ├── vite.config.ts
@@ -186,7 +188,7 @@ cdk deploy
 
 `VITE_*` 環境変数は CDK が Amplify に自動設定するため、コンソールでの手動設定は不要。
 
-### 3. SNS IdP の追加（オプション）
+### 4. SNS IdP の追加（オプション）
 
 各プロバイダーのデベロッパーコンソールで OAuth 認証情報を取得し、
 `infrastructure/lib/stack.ts` のコメントアウトを解除して再デプロイ：
