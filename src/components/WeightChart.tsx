@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, Legend,
   CartesianGrid, ResponsiveContainer, Brush, ReferenceLine,
@@ -11,16 +12,15 @@ interface Props {
   xInterval?: number;
 }
 
-export default function WeightChart({ data, height = 350, xInterval = 7 }: Props) {
-  const chartData = data.dates.map((d, i) => ({
-    date: d,
-    weight: data.weights[i],
-    sma7: data.sma7[i],
-  }));
+const WeightChart = memo(function WeightChart({ data, height = 350, xInterval = 7 }: Props) {
+  const chartData = useMemo(
+    () => data.dates.map((d, i) => ({ date: d, weight: data.weights[i], sma7: data.sma7[i] })),
+    [data.dates, data.weights, data.sma7],
+  );
 
-  const n         = data.dates.length;
-  const showBrush = n > 90;
-  const yearStarts = getYearStarts(data.dates);
+  const n          = data.dates.length;
+  const showBrush  = n > 90;
+  const yearStarts = useMemo(() => getYearStarts(data.dates), [data.dates]);
   const fmt = (dateStr: string) => formatTick(dateStr, n);
 
   return (
@@ -59,4 +59,6 @@ export default function WeightChart({ data, height = 350, xInterval = 7 }: Props
       </LineChart>
     </ResponsiveContainer>
   );
-}
+});
+
+export default WeightChart;
