@@ -2,9 +2,10 @@ import sys, os, json, base64, io
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from data_processor import import_csv_to_dynamo
-from common import ok, err, get_user_id, get_origin
+from common import ok, err, get_user_id, get_origin, log_handler
 
 
+@log_handler
 def handler(event, context):
     origin = get_origin(event)
     if event.get('httpMethod') == 'OPTIONS':

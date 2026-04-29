@@ -1,5 +1,10 @@
 import json
+import logging
 import os
+import time
+
+logger = logging.getLogger()
+logger.setLevel(logging.INFO)
 
 ALLOWED_ORIGINS = os.environ.get('ALLOWED_ORIGINS', 'http://localhost:5173').split(',')
 
@@ -40,3 +45,34 @@ def get_user_id(event: dict) -> str | None:
 def get_origin(event: dict) -> str | None:
     headers = event.get('headers') or {}
     return headers.get('origin') or headers.get('Origin')
+
+
+def log_handler(func):
+    """Decorator that emits a structured JSON access log for every Lambda invocation."""
+    def wrapper(event, context):
+        t0 = time.time()
+        method = event.get('httpMethod', 'UNKNOWN')
+        path = event.get('path', '/')
+        user_id = get_user_id(event) or 'anonymous'
+        try:
+            response = func(event, context)
+            logger.info(json.dumps({
+                'type': 'access',
+                'method': method,
+                'path': path,
+                'userId': user_id,
+                'status': response.get('statusCode', 0),
+                'durationMs': round((time.time() - t0) * 1000, 1),
+            }))
+            return response
+        except Exception as e:
+            logger.error(json.dumps({
+                'type': 'error',
+                'method': method,
+                'path': path,
+                'userId': user_id,
+                'error': str(e),
+                'durationMs': round((time.time() - t0) * 1000, 1),
+            }))
+            raise
+    return wrapper
