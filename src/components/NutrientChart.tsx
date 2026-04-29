@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import {
   ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend,
   CartesianGrid, ResponsiveContainer,
@@ -13,12 +14,11 @@ interface Props {
   xInterval?: number;
 }
 
-export default function NutrientChart({ dates, values, target, unit, height = 280, xInterval = 7 }: Props) {
-  const chartData = dates.map((d, i) => ({
-    date: d,
-    value: values[i],
-    target,
-  }));
+const NutrientChart = memo(function NutrientChart({ dates, values, target, unit, height = 280, xInterval = 7 }: Props) {
+  const chartData = useMemo(
+    () => dates.map((d, i) => ({ date: d, value: values[i], target })),
+    [dates, values, target],
+  );
 
   const n     = dates.length;
   const dense = n > 90;
@@ -44,4 +44,6 @@ export default function NutrientChart({ dates, values, target, unit, height = 28
       </ComposedChart>
     </ResponsiveContainer>
   );
-}
+});
+
+export default NutrientChart;
