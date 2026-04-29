@@ -334,7 +334,7 @@ export class HealthDashboardStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'UserPoolId',       { value: userPool.userPoolId,             exportName: 'UserPoolId' });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId, exportName: 'UserPoolClientId' });
     new cdk.CfnOutput(this, 'CognitoDomain',    { value: cognitoDomainUrl,                exportName: 'CognitoDomain' });
-    new cdk.CfnOutput(this, 'ApiAccessLogGroup',  { value: apiAccessLogGroup.logGroupName,  description: 'API Gateway access log group' });
+    new cdk.CfnOutput(this, 'ApiAccessLogGroupName',  { value: apiAccessLogGroup.logGroupName,  description: 'API Gateway access log group' });
     new cdk.CfnOutput(this, 'LambdaLogGroupPrefix', { value: '/aws/lambda/health-dashboard-*', description: 'Lambda log group prefix (CloudWatch Logs)' });
     new cdk.CfnOutput(this, 'AmplifyAccessLogs', {
       value: `https://console.aws.amazon.com/amplify/home#/apps/${amplifyApp.attrAppId}/accesslogs`,
