@@ -57,6 +57,6 @@
 
 ## Current Status
 
-- **Lifecycle Phase**: CONSTRUCTION PHASE（体脂肪率グラフ機能追加）
-- **Current Stage**: Code Generation 完了
-- **Next Stage**: デプロイ後の動作確認（Build and Test）
+- **Lifecycle Phase**: CONSTRUCTION PHASE（カスタムドメインオプション機能追加）
+- **Current Stage**: Build and Test 完了
+- **Next Stage**: デプロイ（README の「カスタムドメインの設定」セクション参照）
