@@ -2,9 +2,10 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from data_processor import load_items, items_to_csv
-from common import ok, err, get_user_id, get_origin, cors_headers
+from common import ok, err, get_user_id, get_origin, cors_headers, log_handler
 
 
+@log_handler
 def handler(event, context):
     origin = get_origin(event)
     if event.get('httpMethod') == 'OPTIONS':
