@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ReferenceLine,
   ResponsiveContainer, Cell,
@@ -11,14 +12,14 @@ interface Props {
   xInterval?: number;
 }
 
-export default function SlopeChart({ data, height = 300, xInterval = 4 }: Props) {
-  const chartData = data.slope_dates.map((d, i) => {
-    const raw = data.slope_values[i];
-    return {
-      date: d,
-      slope: raw !== null ? Math.round(raw * 7 * 100) / 100 : null,
-    };
-  });
+const SlopeChart = memo(function SlopeChart({ data, height = 300, xInterval = 4 }: Props) {
+  const chartData = useMemo(
+    () => data.slope_dates.map((d, i) => {
+      const raw = data.slope_values[i];
+      return { date: d, slope: raw !== null ? Math.round(raw * 7 * 100) / 100 : null };
+    }),
+    [data.slope_dates, data.slope_values],
+  );
 
   const n   = data.slope_dates.length;
   const fmt = (dateStr: string) => formatTick(dateStr, n * 7); // 週次→日次換算で判定
@@ -39,4 +40,6 @@ export default function SlopeChart({ data, height = 300, xInterval = 4 }: Props)
       </BarChart>
     </ResponsiveContainer>
   );
-}
+});
+
+export default SlopeChart;
