@@ -206,6 +206,13 @@ export class HealthDashboardStack extends cdk.Stack {
 
     [fnData, fnEntry, fnExport, fnImport].forEach(fn => table.grantReadWriteData(fn));
 
+    // ------------------------------------------------------------------ Cognito auth triggers
+    const fnPreAuth  = makeFn('PreAuth',  'lambda/auth_pre.handler',  'Cognito Pre-Authentication: log login attempts');
+    const fnPostAuth = makeFn('PostAuth', 'lambda/auth_post.handler', 'Cognito Post-Authentication: log login successes');
+
+    userPool.addTrigger(cognito.UserPoolOperation.PRE_AUTHENTICATION,  fnPreAuth);
+    userPool.addTrigger(cognito.UserPoolOperation.POST_AUTHENTICATION, fnPostAuth);
+
     // ------------------------------------------------------------------ API Gateway access logs
     // API Gateway needs an account-level IAM role to write to CloudWatch Logs.
     const apiGwCwRole = new iam.Role(this, 'ApiGwCloudWatchRole', {
@@ -224,13 +231,13 @@ export class HealthDashboardStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // ------------------------------------------------------------------ Lambda log groups (explicit retention)
-    const lambdaNames = ['data', 'entry', 'export', 'importcsv'];
+    // ------------------------------------------------------------------ Lambda log groups (set retention on existing groups)
+    // LogRetention uses a Custom Resource to update retention without recreating existing log groups.
+    const lambdaNames = ['data', 'entry', 'export', 'importcsv', 'preauth', 'postauth'];
     lambdaNames.forEach(name =>
-      new logs.LogGroup(this, `LambdaLogGroup-${name}`, {
+      new logs.LogRetention(this, `LambdaLogRetention-${name}`, {
         logGroupName: `/aws/lambda/health-dashboard-${name}`,
         retention: logs.RetentionDays.THREE_MONTHS,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
       }),
     );
 
@@ -269,6 +276,43 @@ export class HealthDashboardStack extends cdk.Stack {
         filterStatements: ['type = "error"'],
         sort: '@timestamp desc',
         limit: 100,
+      }),
+    });
+
+    const authLogGroups = [
+      logs.LogGroup.fromLogGroupName(this, 'LgAuthPre',  '/aws/lambda/health-dashboard-preauth'),
+      logs.LogGroup.fromLogGroupName(this, 'LgAuthPost', '/aws/lambda/health-dashboard-postauth'),
+    ];
+
+    new logs.QueryDefinition(this, 'QueryAuthAttempts', {
+      queryDefinitionName: 'health-dashboard/auth-all-attempts',
+      logGroups: authLogGroups,
+      queryString: new logs.QueryString({
+        fields: ['@timestamp', 'type', 'username', 'userId', 'email', 'newDeviceUsed'],
+        sort: '@timestamp desc',
+        limit: 200,
+      }),
+    });
+
+    new logs.QueryDefinition(this, 'QueryAuthFailures', {
+      queryDefinitionName: 'health-dashboard/auth-failures',
+      logGroups: [logs.LogGroup.fromLogGroupName(this, 'LgAuthPreFail', '/aws/lambda/health-dashboard-preauth')],
+      queryString: new logs.QueryString({
+        fields: ['@timestamp', 'username', 'clientId'],
+        filterStatements: ['type = "login_attempt"'],
+        sort: '@timestamp desc',
+        limit: 200,
+      }),
+    });
+
+    new logs.QueryDefinition(this, 'QueryAuthSuccesses', {
+      queryDefinitionName: 'health-dashboard/auth-successes',
+      logGroups: [logs.LogGroup.fromLogGroupName(this, 'LgAuthPostSucc', '/aws/lambda/health-dashboard-postauth')],
+      queryString: new logs.QueryString({
+        fields: ['@timestamp', 'username', 'userId', 'email', 'newDeviceUsed'],
+        filterStatements: ['type = "login_success"'],
+        sort: '@timestamp desc',
+        limit: 200,
       }),
     });
 
@@ -334,7 +378,7 @@ export class HealthDashboardStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'UserPoolId',       { value: userPool.userPoolId,             exportName: 'UserPoolId' });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId, exportName: 'UserPoolClientId' });
     new cdk.CfnOutput(this, 'CognitoDomain',    { value: cognitoDomainUrl,                exportName: 'CognitoDomain' });
-    new cdk.CfnOutput(this, 'ApiAccessLogGroup',  { value: apiAccessLogGroup.logGroupName,  description: 'API Gateway access log group' });
+    new cdk.CfnOutput(this, 'ApiAccessLogGroupName',  { value: apiAccessLogGroup.logGroupName,  description: 'API Gateway access log group' });
     new cdk.CfnOutput(this, 'LambdaLogGroupPrefix', { value: '/aws/lambda/health-dashboard-*', description: 'Lambda log group prefix (CloudWatch Logs)' });
     new cdk.CfnOutput(this, 'AmplifyAccessLogs', {
       value: `https://console.aws.amazon.com/amplify/home#/apps/${amplifyApp.attrAppId}/accesslogs`,
