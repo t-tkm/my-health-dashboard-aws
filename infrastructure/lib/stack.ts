@@ -224,13 +224,13 @@ export class HealthDashboardStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
-    // ------------------------------------------------------------------ Lambda log groups (explicit retention)
+    // ------------------------------------------------------------------ Lambda log groups (set retention on existing groups)
+    // LogRetention uses a Custom Resource to update retention without recreating existing log groups.
     const lambdaNames = ['data', 'entry', 'export', 'importcsv'];
     lambdaNames.forEach(name =>
-      new logs.LogGroup(this, `LambdaLogGroup-${name}`, {
+      new logs.LogRetention(this, `LambdaLogRetention-${name}`, {
         logGroupName: `/aws/lambda/health-dashboard-${name}`,
         retention: logs.RetentionDays.THREE_MONTHS,
-        removalPolicy: cdk.RemovalPolicy.DESTROY,
       }),
     );
 
