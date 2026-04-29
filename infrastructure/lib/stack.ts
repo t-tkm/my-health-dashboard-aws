@@ -4,6 +4,8 @@ import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as amplify from 'aws-cdk-lib/aws-amplify';
+import * as logs from 'aws-cdk-lib/aws-logs';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import * as path from 'path';
 
@@ -204,9 +206,91 @@ export class HealthDashboardStack extends cdk.Stack {
 
     [fnData, fnEntry, fnExport, fnImport].forEach(fn => table.grantReadWriteData(fn));
 
+    // ------------------------------------------------------------------ API Gateway access logs
+    // API Gateway needs an account-level IAM role to write to CloudWatch Logs.
+    const apiGwCwRole = new iam.Role(this, 'ApiGwCloudWatchRole', {
+      assumedBy: new iam.ServicePrincipal('apigateway.amazonaws.com'),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AmazonAPIGatewayPushToCloudWatchLogs'),
+      ],
+    });
+    new apigw.CfnAccount(this, 'ApiGwAccount', {
+      cloudWatchRoleArn: apiGwCwRole.roleArn,
+    });
+
+    const apiAccessLogGroup = new logs.LogGroup(this, 'ApiAccessLogGroup', {
+      logGroupName: '/aws/apigateway/health-dashboard-access',
+      retention: logs.RetentionDays.THREE_MONTHS,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // ------------------------------------------------------------------ Lambda log groups (explicit retention)
+    const lambdaNames = ['data', 'entry', 'export', 'importcsv'];
+    lambdaNames.forEach(name =>
+      new logs.LogGroup(this, `LambdaLogGroup-${name}`, {
+        logGroupName: `/aws/lambda/health-dashboard-${name}`,
+        retention: logs.RetentionDays.THREE_MONTHS,
+        removalPolicy: cdk.RemovalPolicy.DESTROY,
+      }),
+    );
+
+    // ------------------------------------------------------------------ CloudWatch Logs Insights saved queries
+    new logs.QueryDefinition(this, 'QueryApiAccess', {
+      queryDefinitionName: 'health-dashboard/api-access-summary',
+      logGroups: [apiAccessLogGroup],
+      queryString: new logs.QueryString({
+        fields: ['@timestamp', 'httpMethod', 'resourcePath', 'status', 'responseLength', 'ip'],
+        filterStatements: ['status != 0'],
+        sort: '@timestamp desc',
+        limit: 200,
+      }),
+    });
+
+    new logs.QueryDefinition(this, 'QueryLambdaAccess', {
+      queryDefinitionName: 'health-dashboard/lambda-access-log',
+      logGroups: lambdaNames.map((_, i) =>
+        logs.LogGroup.fromLogGroupName(this, `LgRef-${i}`, `/aws/lambda/health-dashboard-${lambdaNames[i]}`),
+      ),
+      queryString: new logs.QueryString({
+        fields: ['@timestamp', 'method', 'path', 'userId', 'status', 'durationMs'],
+        filterStatements: ['type = "access"'],
+        sort: '@timestamp desc',
+        limit: 200,
+      }),
+    });
+
+    new logs.QueryDefinition(this, 'QueryLambdaErrors', {
+      queryDefinitionName: 'health-dashboard/lambda-errors',
+      logGroups: lambdaNames.map((_, i) =>
+        logs.LogGroup.fromLogGroupName(this, `LgErrRef-${i}`, `/aws/lambda/health-dashboard-${lambdaNames[i]}`),
+      ),
+      queryString: new logs.QueryString({
+        fields: ['@timestamp', 'method', 'path', 'userId', 'error', 'durationMs'],
+        filterStatements: ['type = "error"'],
+        sort: '@timestamp desc',
+        limit: 100,
+      }),
+    });
+
     // ------------------------------------------------------------------ API Gateway
     const api = new apigw.RestApi(this, 'Api', {
       restApiName: 'health-dashboard-api',
+      deployOptions: {
+        accessLogDestination: new apigw.LogGroupLogDestination(apiAccessLogGroup),
+        accessLogFormat: apigw.AccessLogFormat.jsonWithStandardFields({
+          caller: true,
+          httpMethod: true,
+          ip: true,
+          protocol: true,
+          requestTime: true,
+          resourcePath: true,
+          responseLength: true,
+          status: true,
+          user: true,
+        }),
+        metricsEnabled: true,
+        loggingLevel: apigw.MethodLoggingLevel.ERROR,
+      },
       defaultCorsPreflightOptions: {
         allowOrigins: apigw.Cors.ALL_ORIGINS,
         allowMethods: apigw.Cors.ALL_METHODS,
@@ -250,5 +334,11 @@ export class HealthDashboardStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'UserPoolId',       { value: userPool.userPoolId,             exportName: 'UserPoolId' });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId, exportName: 'UserPoolClientId' });
     new cdk.CfnOutput(this, 'CognitoDomain',    { value: cognitoDomainUrl,                exportName: 'CognitoDomain' });
+    new cdk.CfnOutput(this, 'ApiAccessLogGroup',  { value: apiAccessLogGroup.logGroupName,  description: 'API Gateway access log group' });
+    new cdk.CfnOutput(this, 'LambdaLogGroupPrefix', { value: '/aws/lambda/health-dashboard-*', description: 'Lambda log group prefix (CloudWatch Logs)' });
+    new cdk.CfnOutput(this, 'AmplifyAccessLogs', {
+      value: `https://console.aws.amazon.com/amplify/home#/apps/${amplifyApp.attrAppId}/accesslogs`,
+      description: 'Amplify access logs (download from Amplify console)',
+    });
   }
 }
