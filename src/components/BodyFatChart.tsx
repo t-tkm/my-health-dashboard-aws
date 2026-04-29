@@ -1,3 +1,4 @@
+import { memo, useMemo } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, Tooltip, Legend,
   CartesianGrid, ResponsiveContainer, Brush, ReferenceLine,
@@ -11,20 +12,26 @@ interface Props {
   xInterval?: number;
 }
 
-export default function BodyFatChart({ data, height = 350, xInterval = 7 }: Props) {
-  const chartData = data.dates.map((d, i) => ({
-    date: d,
-    body_fat: data.body_fat_percents[i] ?? null,
-    sma7_bf:  data.sma7_body_fat[i]    ?? null,
-  }));
+const BodyFatChart = memo(function BodyFatChart({ data, height = 350, xInterval = 7 }: Props) {
+  const chartData = useMemo(
+    () => data.dates.map((d, i) => ({
+      date: d,
+      body_fat: data.body_fat_percents[i] ?? null,
+      sma7_bf:  data.sma7_body_fat[i]    ?? null,
+    })),
+    [data.dates, data.body_fat_percents, data.sma7_body_fat],
+  );
 
-  const validVals = data.body_fat_percents.filter((v): v is number => v !== null && v > 0);
-  const bfMin = validVals.length > 0 ? Math.floor(Math.min(...validVals)) - 1 : 0;
-  const bfMax = validVals.length > 0 ? Math.ceil(Math.max(...validVals)) + 1 : 50;
+  const { bfMin, bfMax } = useMemo(() => {
+    const valid = data.body_fat_percents.filter((v): v is number => v !== null && v > 0);
+    return valid.length > 0
+      ? { bfMin: Math.floor(Math.min(...valid)) - 1, bfMax: Math.ceil(Math.max(...valid)) + 1 }
+      : { bfMin: 0, bfMax: 50 };
+  }, [data.body_fat_percents]);
 
-  const n         = data.dates.length;
-  const showBrush = n > 90;
-  const yearStarts = getYearStarts(data.dates);
+  const n          = data.dates.length;
+  const showBrush  = n > 90;
+  const yearStarts = useMemo(() => getYearStarts(data.dates), [data.dates]);
   const fmt = (dateStr: string) => formatTick(dateStr, n);
 
   return (
@@ -63,4 +70,6 @@ export default function BodyFatChart({ data, height = 350, xInterval = 7 }: Prop
       </LineChart>
     </ResponsiveContainer>
   );
-}
+});
+
+export default BodyFatChart;
