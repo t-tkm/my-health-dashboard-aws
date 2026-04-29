@@ -27,6 +27,16 @@ export class HealthDashboardStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
+    // ------------------------------------------------------------------ Domain config
+    // CUSTOM_DOMAIN=health.t-tkm.link で独自ドメインを有効化（省略時は Amplify 自動ドメイン）
+    // 循環依存回避のため AMPLIFY_DOMAIN は Step2 デプロイ時のみ設定する（CUSTOM_DOMAIN と排他）
+    const customDomain   = process.env.CUSTOM_DOMAIN;
+    const amplifyDomain  = process.env.AMPLIFY_DOMAIN;
+    const amplifyUrl     = amplifyDomain ? `https://${amplifyDomain}` : null;
+    const callbackUrls   = customDomain
+      ? ['http://localhost:5173', `https://${customDomain}`]
+      : ['http://localhost:5173', ...(amplifyUrl ? [amplifyUrl] : [])];
+
     // ------------------------------------------------------------------ Amplify App
     // GitHub Token は cdk deploy 前に export GITHUB_TOKEN=<PAT> で設定する
     const amplifyApp = new amplify.CfnApp(this, 'AmplifyApp', {
@@ -67,14 +77,20 @@ export class HealthDashboardStack extends cdk.Stack {
       enableAutoBuild: true,
     });
 
-    // Amplify のデフォルトドメイン: main.<appId>.amplifyapp.com
-    // ※ attrDefaultDomain を Cognito callbackUrls に使うと API GW → UserPoolClient → AmplifyApp →
-    //   api.url → API GW の循環依存が発生するため、AMPLIFY_DOMAIN 環境変数で2ステップ更新する。
-    //   Step1: cdk deploy（AMPLIFY_DOMAIN 未設定） → AmplifyAppUrl 出力を確認
-    //   Step2: AMPLIFY_DOMAIN=<出力値> cdk deploy → callbackUrls に追加
-    const amplifyDomain  = process.env.AMPLIFY_DOMAIN;
-    const amplifyUrl     = amplifyDomain ? `https://${amplifyDomain}` : null;
-    const callbackUrls   = ['http://localhost:5173', ...(amplifyUrl ? [amplifyUrl] : [])];
+    // Optional: Custom domain — enable by setting CUSTOM_DOMAIN=<subdomain>.<rootdomain>
+    // (e.g. CUSTOM_DOMAIN=health.t-tkm.link cdk deploy)
+    // Requires manual CNAME records in the Route53 hosted zone (can be a different AWS account).
+    if (customDomain) {
+      const domainParts = customDomain.split('.');
+      const prefix      = domainParts[0];
+      const rootDomain  = domainParts.slice(1).join('.');
+      new amplify.CfnDomain(this, 'AmplifyCustomDomain', {
+        appId:    amplifyApp.attrAppId,
+        domainName: rootDomain,
+        subDomainSettings: [{ branchName: 'main', prefix }],
+        enableAutoSubDomain: false,
+      });
+    }
 
     // ------------------------------------------------------------------ Cognito User Pool
     const userPool = new cognito.UserPool(this, 'UserPool', {
@@ -371,9 +387,17 @@ export class HealthDashboardStack extends cdk.Stack {
 
     // ------------------------------------------------------------------ Outputs
     new cdk.CfnOutput(this, 'AmplifyAppUrl', {
-      value: `https://main.${amplifyApp.attrDefaultDomain}`,
-      description: 'Step2: export AMPLIFY_DOMAIN=main.<appId>.amplifyapp.com && cdk deploy',
+      value: customDomain ? `https://${customDomain}` : `https://main.${amplifyApp.attrDefaultDomain}`,
+      description: customDomain
+        ? 'カスタムドメイン有効 — DNS 設定後にアクセス可能 (README の「カスタムドメイン」セクション参照)'
+        : 'Step2: export AMPLIFY_DOMAIN=main.<appId>.amplifyapp.com && cdk deploy',
     });
+    if (customDomain) {
+      new cdk.CfnOutput(this, 'CustomDomainDnsSetup', {
+        value: `Amplify コンソール → Domain management で CNAME レコードを確認し、Route53 ホストゾーンに追加してください`,
+        description: `カスタムドメイン (${customDomain}) の DNS 設定 — README 参照`,
+      });
+    }
     new cdk.CfnOutput(this, 'ApiEndpoint',      { value: api.url,                        exportName: 'ApiEndpoint' });
     new cdk.CfnOutput(this, 'UserPoolId',       { value: userPool.userPoolId,             exportName: 'UserPoolId' });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId, exportName: 'UserPoolClientId' });

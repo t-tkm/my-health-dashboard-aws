@@ -1,5 +1,31 @@
 # AI-DLC Audit Log
 
+## Build and Test Stage — Custom Domain
+**Timestamp**: 2026-04-29T00:10:00Z
+**Build Status**: cdk synth 正常完了（TypeScript エラーなし）
+**Test Status**: 手動検証ステップあり（統合テストは実デプロイ後）
+**Files Generated**:
+- build-instructions.md
+- unit-test-instructions.md
+- integration-test-instructions.md
+- build-and-test-summary.md
+
+---
+
+## Requirements Analysis — Custom Domain Feature
+**Timestamp**: 2026-04-29T00:00:00Z
+**User Input**: "using ai-dlc, health-t-tkm.linkは、ドメイン持っている場合としてオプション機能追加。通常(default)は、amplifyが自動設定のドメインを使う。"
+**AI Response**: AIDLC ワークフロー開始。カスタムドメイン機能の要件質問ファイルを作成し、ユーザーの回答を収集。
+**Context**: Requirements Analysis — カスタムドメインオプション機能
+
+## Requirements Analysis — Question Answers
+**Timestamp**: 2026-04-29T00:01:00Z
+**User Input**: Q1=A(環境変数), Q2=A(カスタムドメインURLのみ), Q3=B(READMEに記載), Q4=A(セキュリティ拡張有効)
+**AI Response**: 回答を基に要件確定。セキュリティ拡張ルール読み込み。ワークフロー計画へ進行。
+**Context**: Requirements Analysis — 回答収集完了
+
+---
+
 ## Workspace Detection
 **Timestamp**: 2026-04-26T00:00:00Z
 **User Input**: "usign ai-dlc, このプロジェクトを正確に分析した上で、AI-DLCに従い、今後の保守を踏まえ、ドキュメントを生成したい。プロジェクトをリバースエンジニアリングし、AI-DLCに準拠するドキュメントを揃えてください。"
