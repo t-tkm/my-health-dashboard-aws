@@ -23,6 +23,14 @@
 - [x] Code Generation — Completed 2026-04-26 (体脂肪率グラフ機能)
 - [ ] Build and Test — 実装後手動確認
 
+### 🟢 CONSTRUCTION PHASE — auth-failures クエリ修正 (#13)
+- [ ] Functional Design — SKIP
+- [ ] NFR Requirements — SKIP
+- [ ] NFR Design — SKIP
+- [ ] Infrastructure Design — SKIP (既存 CloudWatch Logs Insights クエリの修正のみ)
+- [x] Code Generation — Completed 2026-05-05 (CfnQueryDefinition + 集計ベースクエリに変更)
+- [x] Build and Test — cdk synth コンパイル確認済み 2026-05-05
+
 ### 🟡 OPERATIONS PHASE
 - [ ] Operations — PLACEHOLDER
 
@@ -59,7 +67,7 @@
 
 - **Lifecycle Phase**: OPERATIONS PHASE（本番稼働中）
 - **Current Stage**: 全フェーズ完了
-- **Last Updated**: 2026-05-04
+- **Last Updated**: 2026-05-05
 
 ## 本番環境（2026-05-04 時点）
 

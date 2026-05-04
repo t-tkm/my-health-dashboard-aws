@@ -310,15 +310,20 @@ export class HealthDashboardStack extends cdk.Stack {
       }),
     });
 
-    new logs.QueryDefinition(this, 'QueryAuthFailures', {
-      queryDefinitionName: 'health-dashboard/auth-failures',
-      logGroups: [logs.LogGroup.fromLogGroupName(this, 'LgAuthPreFail', '/aws/lambda/health-dashboard-preauth')],
-      queryString: new logs.QueryString({
-        fields: ['@timestamp', 'username', 'clientId'],
-        filterStatements: ['type = "login_attempt"'],
-        sort: '@timestamp desc',
-        limit: 200,
-      }),
+    new logs.CfnQueryDefinition(this, 'QueryAuthFailures', {
+      name: 'health-dashboard/auth-failures',
+      logGroupNames: [
+        '/aws/lambda/health-dashboard-preauth',
+        '/aws/lambda/health-dashboard-postauth',
+      ],
+      queryString: [
+        'fields @timestamp, type, username',
+        '| filter type = "login_attempt" or type = "login_success"',
+        '| stats count_if(type = "login_attempt") as attempts,',
+        '        count_if(type = "login_success") as successes by username, bin(5m)',
+        '| filter successes = 0 and attempts > 0',
+        '| sort bin desc',
+      ].join('\n'),
     });
 
     new logs.QueryDefinition(this, 'QueryAuthSuccesses', {

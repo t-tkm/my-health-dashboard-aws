@@ -1,5 +1,13 @@
 # AI-DLC Audit Log
 
+## Fix: auth-failures クエリを認証失敗のみ返すよう修正（#13）
+**Timestamp**: 2026-05-05T00:00:00Z
+**User Input**: "#13対応"
+**AI Response**: `QueryAuthFailures` を `logs.QueryDefinition` から `logs.CfnQueryDefinition` に変更。対象ロググループを PreAuth のみ → PreAuth + PostAuth 両方に拡張し、`count_if` による 5 分窓集計で認証失敗（試行あり・成功なし）のみを抽出するクエリに修正。README の保存済みクエリ一覧も更新。
+**Context**: バグ修正 — infrastructure/lib/stack.ts, README.md
+
+---
+
 ## Documentation Update — カスタムドメイン実デプロイ検証・ドキュメント整合
 **Timestamp**: 2026-05-04T11:30:00Z
 **User Input**: "using ai-dlc, ドキュメント一式、README含め整合させて更新しておく。"
