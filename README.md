@@ -193,24 +193,67 @@ Outputs:
 
 ### 3. CNAME レコードを Route53 に追加（初回のみ）
 
-デプロイ後、Amplify がカスタムドメインの検証用 CNAME レコードを要求する。この手順は**初回デプロイ時のみ**必要。
+デプロイ後、2 種類の CNAME レコードを Route53 に追加する必要がある。
+
+#### 追加する CNAME レコード
+
+| # | 用途 | レコード名 | 値 |
+|---|---|---|---|
+| 1 | SSL 証明書の検証（ACM） | `_<hash>.t-tkm.link` | `_<hash>.acm-validations.aws` |
+| 2 | ドメインの向き先（CloudFront） | `health.t-tkm.link` | `<appId>.cloudfront.net` |
+
+具体的な値は Amplify コンソールで確認する：
 
 1. [Amplify コンソール](https://console.aws.amazon.com/amplify/) を開く
 2. アプリ `health-dashboard` → **Domain management** を選択
-3. 表示されている CNAME レコード（2〜3 件）を確認する：
-   - **ACM 証明書検証用** CNAME（SSL 証明書の発行に必要）
-   - **ドメイン向き先** CNAME（Amplify CDN エンドポイントへの向き先）
-4. ドメインを管理している Route53 ホストゾーン（別アカウントの場合はそちら）にレコードを追加する
+3. 画面に表示される 2 件の CNAME レコードの **名前** と **値** をそれぞれメモする
 
-```
-# 追加するレコードの例（Amplify コンソールの表示内容に従う）
-レコードタイプ: CNAME
-名前: health.t-tkm.link
-値:  <appId>.cloudfront.net
+#### Route53 への追加手順
+
+`t-tkm.link` のホストゾーンがあるアカウント（`root-admin`）で操作する。
+
+**レコード 1：ACM 証明書検証用**（ルートドメインに対して1回のみ）
+
+```bash
+aws route53 change-resource-record-sets \
+  --hosted-zone-id Z005297627DYDFL6WTAVH \
+  --change-batch '{
+    "Changes": [{
+      "Action": "CREATE",
+      "ResourceRecordSet": {
+        "Name": "_<hash>.t-tkm.link",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [{ "Value": "_<hash>.acm-validations.aws" }]
+      }
+    }]
+  }' \
+  --profile root-admin
 ```
 
-DNS の伝播には数分〜最大 48 時間かかる場合がある。  
-Amplify コンソールの Domain management で「Available」と表示されれば設定完了。
+**レコード 2：ドメイン向き先**（再デプロイで CloudFront が変わった場合は `UPSERT` で更新）
+
+```bash
+aws route53 change-resource-record-sets \
+  --hosted-zone-id Z005297627DYDFL6WTAVH \
+  --change-batch '{
+    "Changes": [{
+      "Action": "CREATE",
+      "ResourceRecordSet": {
+        "Name": "health.t-tkm.link",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [{ "Value": "<appId>.cloudfront.net" }]
+      }
+    }]
+  }' \
+  --profile root-admin
+```
+
+> **再デプロイ時の注意**: `cdk deploy` のたびに CloudFront のエンドポイント（`<appId>.cloudfront.net`）が変わる場合がある。その場合はレコード 2 を `"Action": "UPSERT"` で更新する。レコード 1（ACM 検証）は変わらないため再追加不要。
+
+DNS 伝播には数分〜最大 48 時間かかる場合がある。  
+Amplify コンソールの Domain management で **「Available」** と表示されれば設定完了。
 
 ---
 
