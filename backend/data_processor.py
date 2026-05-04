@@ -133,12 +133,18 @@ def compute(items: list[dict]) -> dict:
     bf_series = pd.to_numeric(bf_series, errors='coerce')
     sma7_bf = bf_series.rolling(window=7, min_periods=1).mean().round(2)
 
-    df['weight'] = pd.to_numeric(df['weight'], errors='coerce').interpolate(method='linear')
+    df['weight'] = pd.to_numeric(df['weight'], errors='coerce')
+    raw_weight_series = df['weight'].copy()  # NaN where no data recorded
+    df['weight'] = df['weight'].interpolate(method='linear')
     df = df.fillna(0)
 
-    weights  = df['weight'].round(1).tolist()
     calories = df['calories'].tolist()
     sma7     = df['weight'].rolling(window=7, min_periods=1).mean().round(2).tolist()
+
+    # nullable weights for display (null where no data, not interpolated)
+    raw_weights = [None if (isinstance(v, float) and np.isnan(v)) else round(float(v), 1)
+                   for v in raw_weight_series.tolist()]
+    actual_weights = [w for w in raw_weights if w is not None]
 
     all_slopes = _rolling_slope(df['weight'], window=30)
     weekly_idx = list(range(6, len(df), 7))
@@ -162,7 +168,7 @@ def compute(items: list[dict]) -> dict:
 
     return {
         'dates':                  df['date'].tolist(),
-        'weights':                weights,
+        'weights':                raw_weights,
         'calories':               calories,
         'sma7':                   sma7,
         'body_fat_percents':      _nullable_list(bf_series.round(1)),
@@ -188,7 +194,7 @@ def compute(items: list[dict]) -> dict:
         'sugar_target':   sugar_target,
         'fiber_target':   fiber_target,
         'salt_target':    salt_target,
-        'current_weight':  float(round(weights[-1], 1)),
+        'current_weight':  actual_weights[-1] if actual_weights else float(round(sma7[-1], 1)),
         'sma7_start':      float(round(sma7[0], 1)),
         'sma7_end':        float(round(sma7[-1], 1)),
         'sma7_start_date': df['date'].iloc[0],
@@ -196,8 +202,8 @@ def compute(items: list[dict]) -> dict:
         'weight_diff':     float(round(sma7[0] - sma7[-1], 1)),
         'avg_cal':         int(sum(calories) / len(calories)) if calories else 0,
         'record_days':     int(len(df)),
-        'weight_min':      float(round(min(weights) - 1, 1)),
-        'weight_max':      float(round(max(weights) + 1, 1)),
+        'weight_min':      float(round(min(actual_weights) - 1, 1)) if actual_weights else 0.0,
+        'weight_max':      float(round(max(actual_weights) + 1, 1)) if actual_weights else 100.0,
     }
 
 
