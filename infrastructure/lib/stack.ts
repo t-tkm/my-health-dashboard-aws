@@ -28,15 +28,11 @@ export class HealthDashboardStack extends cdk.Stack {
     });
 
     // ------------------------------------------------------------------ Domain config
-    // CUSTOM_DOMAIN=your-subdomain.your-domain.com で独自ドメインを有効化（省略時は Amplify 自動ドメイン）
-    // 循環依存回避のため AMPLIFY_DOMAIN は Step2 デプロイ時のみ設定する（CUSTOM_DOMAIN と排他）
-    const customDomain   = process.env.CUSTOM_DOMAIN;
-    const amplifyDomain  = process.env.AMPLIFY_DOMAIN;
-    const amplifyUrl     = amplifyDomain ? `https://${amplifyDomain}` : null;
-    const callbackUrls   = customDomain
-      ? ['http://localhost:5173', `https://${customDomain}`]
-      : ['http://localhost:5173', ...(amplifyUrl ? [amplifyUrl] : [])];
-
+    // CUSTOM_DOMAIN=your-subdomain.your-domain.com で独自ドメインを指定する（必須）
+    const customDomain = process.env.CUSTOM_DOMAIN;
+    if (!customDomain) {
+      throw new Error('環境変数 CUSTOM_DOMAIN を設定してください（例: your-subdomain.your-domain.com）');
+    }
     // ------------------------------------------------------------------ Amplify App
     // GitHub Token は cdk deploy 前に export GITHUB_TOKEN=<PAT> で設定する
     const amplifyApp = new amplify.CfnApp(this, 'AmplifyApp', {
@@ -71,11 +67,14 @@ export class HealthDashboardStack extends cdk.Stack {
       ],
     });
 
-    new amplify.CfnBranch(this, 'MainBranch', {
+    const mainBranch = new amplify.CfnBranch(this, 'MainBranch', {
       appId: amplifyApp.attrAppId,
       branchName: 'main',
       enableAutoBuild: true,
     });
+
+    // Cognito callback URLs: localhost + custom domain + Amplify default domain (if provided)
+    const callbackUrls = ['http://localhost:5173', `https://${customDomain}`];
 
     // Optional: Custom domain — enable by setting CUSTOM_DOMAIN=<subdomain>.<rootdomain>
     // (e.g. CUSTOM_DOMAIN=your-subdomain.your-domain.com cdk deploy)
@@ -84,12 +83,13 @@ export class HealthDashboardStack extends cdk.Stack {
       const domainParts = customDomain.split('.');
       const prefix      = domainParts[0];
       const rootDomain  = domainParts.slice(1).join('.');
-      new amplify.CfnDomain(this, 'AmplifyCustomDomain', {
+      const cfnDomain = new amplify.CfnDomain(this, 'AmplifyCustomDomain', {
         appId:    amplifyApp.attrAppId,
         domainName: rootDomain,
         subDomainSettings: [{ branchName: 'main', prefix }],
         enableAutoSubDomain: false,
       });
+      cfnDomain.addDependency(mainBranch);
     }
 
     // ------------------------------------------------------------------ Cognito User Pool
@@ -189,7 +189,7 @@ export class HealthDashboardStack extends cdk.Stack {
 
     const lambdaEnv: Record<string, string> = {
       TABLE_NAME:      table.tableName,
-      ALLOWED_ORIGINS: callbackUrls.join(','),
+      ALLOWED_ORIGINS: cdk.Fn.join(',', callbackUrls),
     };
 
     const backendDir = path.join(__dirname, '../../backend');
@@ -387,17 +387,13 @@ export class HealthDashboardStack extends cdk.Stack {
 
     // ------------------------------------------------------------------ Outputs
     new cdk.CfnOutput(this, 'AmplifyAppUrl', {
-      value: customDomain ? `https://${customDomain}` : `https://main.${amplifyApp.attrDefaultDomain}`,
-      description: customDomain
-        ? 'カスタムドメイン有効 — DNS 設定後にアクセス可能 (README の「カスタムドメイン」セクション参照)'
-        : 'Step2: export AMPLIFY_DOMAIN=main.<appId>.amplifyapp.com && cdk deploy',
+      value: `https://${customDomain}`,
+      description: 'Custom domain URL - accessible after DNS CNAME is set (see README)',
     });
-    if (customDomain) {
-      new cdk.CfnOutput(this, 'CustomDomainDnsSetup', {
-        value: `Amplify コンソール → Domain management で CNAME レコードを確認し、Route53 ホストゾーンに追加してください`,
-        description: `カスタムドメイン (${customDomain}) の DNS 設定 — README 参照`,
-      });
-    }
+    new cdk.CfnOutput(this, 'CustomDomainDnsSetup', {
+      value: `Check Amplify console > Domain management for required CNAME records, then add to Route53`,
+      description: `DNS setup required for custom domain (${customDomain}) - see README`,
+    });
     new cdk.CfnOutput(this, 'ApiEndpoint',      { value: api.url,                        exportName: 'ApiEndpoint' });
     new cdk.CfnOutput(this, 'UserPoolId',       { value: userPool.userPoolId,             exportName: 'UserPoolId' });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId, exportName: 'UserPoolClientId' });

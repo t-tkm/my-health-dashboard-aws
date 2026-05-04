@@ -107,6 +107,20 @@ npm run dev
 
 ---
 
+## デプロイの仕組みと注意点
+
+フロントエンドとバックエンドでデプロイ方法が異なる。
+
+| レイヤー | 対象 | デプロイ方法 | タイミング |
+|---|---|---|---|
+| フロントエンド | `src/` 以下の React コード | Amplify が `main` ブランチへの push を検知して**自動ビルド・デプロイ** | PR マージ後、数分で反映 |
+| バックエンド | `backend/` 以下の Lambda コード | **`cdk deploy` を手動実行**して Lambda 関数を更新 | 実行するまで古いコードのまま |
+| インフラ | `infrastructure/` 以下の CDK コード | **`cdk deploy` を手動実行** | 実行するまで変更されない |
+
+> ⚠️ **PR をマージしただけではバックエンドは更新されない。** `backend/` や `infrastructure/` に変更を加えた場合は、マージ後に必ず `cdk deploy` を実行すること。
+
+---
+
 ## AWS へのデプロイ
 
 ### 前提条件
@@ -135,6 +149,22 @@ aws sts get-caller-identity
 
 必要な権限の目安（管理者ロール推奨）：`dynamodb:*` / `lambda:*` / `apigateway:*` / `cognito-idp:*` / `iam:CreateRole` / `cloudformation:*` / `s3:*`
 
+#### 必須環境変数
+
+`cdk deploy` / `cdk destroy` の実行前に必ず設定すること。未設定の場合は CDK がエラーで停止する。
+
+| 変数 | 説明 | 例 |
+|---|---|---|
+| `GITHUB_TOKEN` | Amplify が GitHub リポジトリに接続するための Personal Access Token | `ghp_xxxx` |
+| `CUSTOM_DOMAIN` | アプリに使用するカスタムドメイン（`サブドメイン.ルートドメイン` 形式） | `your-subdomain.your-domain.com` |
+
+```bash
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+export CUSTOM_DOMAIN=your-subdomain.your-domain.com
+```
+
+> **CUSTOM_DOMAIN の前提**: 指定するドメインのルートゾーン（例: `your-domain.com`）を Route53 で管理していること。別 AWS アカウントの Route53 ホストゾーンでも利用可能。
+
 ### 1. GitHub Personal Access Token を用意する（初回のみ）
 
 CDK が Amplify と GitHub を連携するために PAT が必要。
@@ -150,102 +180,119 @@ CDK が Amplify と GitHub を連携するために PAT が必要。
    - Scope: **`repo`** と **`admin:repo_hook`** にチェック（Amplify が webhook を作成するために必要）
 7. 表示されたトークン（`ghp_xxx...`）をコピー（この画面を閉じると二度と表示されない）
 
+### 2. CDK でインフラをデプロイ
+
+Amplify アプリ・Cognito・Lambda・DynamoDB・API Gateway がすべて一括デプロイされる。  
+`VITE_*` 環境変数は CDK が Amplify に自動設定するため、コンソールでの手動設定は不要。
+
 ```bash
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
-```
-
-### 2. CDK でインフラをデプロイ（Step 1）
-
-Amplify アプリ・Cognito・Lambda・DynamoDB・API Gateway がすべて一括デプロイされる。
-
-```bash
+export CUSTOM_DOMAIN=your-subdomain.your-domain.com
 cd infrastructure
-npm install
-cdk bootstrap   # 初回のみ
+npm install        # 初回のみ
+cdk bootstrap      # 初回のみ
 cdk deploy
 ```
 
-デプロイ後、出力の `AmplifyAppUrl` を確認する：
+デプロイ後の出力例：
 
 ```
 Outputs:
-  HealthDashboardStack.AmplifyAppUrl    = https://main.xxxxxxxxxx.amplifyapp.com  ← コピーしておく
+  HealthDashboardStack.AmplifyAppUrl    = https://your-subdomain.your-domain.com
   HealthDashboardStack.ApiEndpoint      = https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/prod/
   HealthDashboardStack.UserPoolId       = ap-northeast-1_xxxxxxxxx
   HealthDashboardStack.UserPoolClientId = xxxxxxxxxxxxxxxxxxxxxxxxxx
   HealthDashboardStack.CognitoDomain    = https://health-dashboard-xxxxxxxxxxxx.auth.ap-northeast-1.amazoncognito.com
 ```
 
-### 3. Cognito に Amplify URL を追加（Step 2）
+### 3. Amplify の初回ビルドをトリガー
 
-Step 1 で取得した `AmplifyAppUrl` を `AMPLIFY_DOMAIN` に設定して再デプロイする。
-これにより Cognito の callbackUrls に本番 URL が追加される。
+`cdk deploy` 直後は Amplify アプリが作成されるが、ビルドは自動実行されない。
+Amplify コンソール → `health-dashboard` → 「概要」→ `main` ブランチ → **「デプロイを実行」** をクリックする。
 
-```bash
-export AMPLIFY_DOMAIN=main.xxxxxxxxxx.amplifyapp.com   # https:// は不要
-cdk deploy
-```
+完了まで数分かかる。完了後は GitHub の `main` ブランチへの push で自動デプロイが有効になる。
 
-`VITE_*` 環境変数は CDK が Amplify に自動設定するため、コンソールでの手動設定は不要。
+### 4. CNAME レコードを Route53 に追加（初回のみ）
 
-### 4. カスタムドメインの設定（オプション）
+デプロイ後、2 種類の CNAME レコードを Route53 に追加する必要がある。
 
-独自ドメイン（例: `your-subdomain.your-domain.com`）を使用したい場合に設定する。  
-デフォルトは Amplify が自動生成するドメイン（`main.<appId>.amplifyapp.com`）を使用するため、この手順は不要。
+#### 追加する CNAME レコード
 
-> **前提**: `CUSTOM_DOMAIN` に指定するドメインのルートゾーン（例: `your-domain.com`）を Route53 で管理していること。  
-> 別 AWS アカウントの Route53 ホストゾーンでも利用可能。
+| # | 用途 | レコード名 | 値 |
+|---|---|---|---|
+| 1 | SSL 証明書の検証（ACM） | `_<hash>.your-domain.com` | `_<hash>.acm-validations.aws` |
+| 2 | ドメインの向き先（CloudFront） | `your-subdomain.your-domain.com` | `<appId>.cloudfront.net` |
 
-#### 4-1. CUSTOM_DOMAIN を指定して CDK デプロイ
-
-```bash
-export GITHUB_TOKEN=ghp_xxxx
-export CUSTOM_DOMAIN=your-subdomain.your-domain.com   # サブドメイン.ルートドメイン の形式
-cd infrastructure
-cdk deploy
-```
-
-`CUSTOM_DOMAIN` を設定すると：
-- Cognito の callbackUrls がカスタムドメイン URL のみに設定される（Amplify 自動ドメインは除外）
-- Amplify に `CfnDomain` リソースが作成され、ACM 証明書が自動発行される
-
-> **注意**: `CUSTOM_DOMAIN` を設定した場合、`AMPLIFY_DOMAIN` は不要（Step 2〜3 の手順は不要）。
-
-#### 4-2. CNAME レコードを Route53 に追加
-
-デプロイ後、Amplify がドメイン検証用の CNAME レコードを要求する。
+具体的な値は Amplify コンソールで確認する：
 
 1. [Amplify コンソール](https://console.aws.amazon.com/amplify/) を開く
 2. アプリ `health-dashboard` → **Domain management** を選択
-3. 表示されている CNAME レコード（2〜3 件）を確認する：
-   - **ACM 証明書検証用** CNAME（SSL 証明書の発行に必要）
-   - **ドメイン向き先** CNAME（Amplify CDN エンドポイントへの向き先）
-4. ドメインを管理している Route53 ホストゾーン（別アカウントの場合はそちら）にレコードを追加する
+3. 画面に表示される 2 件の CNAME レコードの **名前** と **値** をそれぞれメモする
 
-```
-# 追加するレコードの例（Amplify コンソールの表示内容に従う）
-レコードタイプ: CNAME
-名前: your-subdomain.your-domain.com
-値:  <appId>.cloudfront.net
-```
+> **Amplify コンソールの表示に関する注意**: 新しい Amplify コンソール（2025年以降）では、CDK（CloudFormation）経由で設定したカスタムドメインが Domain management に表示されないことがある。
+> その場合は CloudFormation コンソール → `HealthDashboardStack` → 「リソース」タブ → `AmplifyCustomDomain` のリンクから直接ドメイン設定画面にアクセスできる。
 
-#### 4-3. DNS 伝播を待つ
+#### Route53 への追加手順
 
-DNS の伝播には数分〜最大 48 時間かかる場合がある。  
-Amplify コンソールの Domain management で「Available」と表示されれば設定完了。
+`your-domain.com` のホストゾーンがあるアカウント（`root-admin`）で操作する。
 
-#### カスタムドメインを無効にする場合
+**レコード 1：ACM 証明書検証用**（ルートドメインに対して1回のみ）
 
 ```bash
-# CUSTOM_DOMAIN を外して再デプロイ（Amplify 自動ドメインに戻る）
-unset CUSTOM_DOMAIN
-export AMPLIFY_DOMAIN=main.<appId>.amplifyapp.com
-cdk deploy
+aws route53 change-resource-record-sets \
+  --hosted-zone-id YOUR_HOSTED_ZONE_ID \
+  --change-batch '{
+    "Changes": [{
+      "Action": "CREATE",
+      "ResourceRecordSet": {
+        "Name": "_<hash>.your-domain.com",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [{ "Value": "_<hash>.acm-validations.aws" }]
+      }
+    }]
+  }' \
+  --profile root-admin
 ```
+
+**レコード 2：ドメイン向き先**（再デプロイで CloudFront が変わった場合は `UPSERT` で更新）
+
+```bash
+aws route53 change-resource-record-sets \
+  --hosted-zone-id YOUR_HOSTED_ZONE_ID \
+  --change-batch '{
+    "Changes": [{
+      "Action": "CREATE",
+      "ResourceRecordSet": {
+        "Name": "your-subdomain.your-domain.com",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [{ "Value": "<appId>.cloudfront.net" }]
+      }
+    }]
+  }' \
+  --profile root-admin
+```
+
+> **再デプロイ時の注意（特に cdk destroy → cdk deploy の場合）**:
+> `cdk destroy` 後に再デプロイすると CloudFront のエンドポイントが変わる。
+> このとき古い CNAME が残っていると Amplify の SSL 設定が "points to another CloudFront distribution" エラーで失敗する。
+>
+> **対処手順**:
+> 1. Route53 で `your-subdomain.your-domain.com` の CNAME レコードを**削除**する
+> 2. Amplify コンソール → Domain management → 「再試行」をクリック
+> 3. 新しい CNAME 値（新しい `xxxx.cloudfront.net`）が表示されるのでメモ
+> 4. Route53 に新しい値で CNAME を**作成**する
+>
+> `"Action": "UPSERT"` では解決しない（Amplify が新旧 CF の競合を DNS レベルで検出するため）。
+> レコード 1（ACM 検証: `_hash.your-domain.com`）は再デプロイ後も変わらないため再追加不要。
+
+DNS 伝播には数分〜最大 48 時間かかる場合がある。  
+Amplify コンソールの Domain management で **「Available」** と表示されれば設定完了。
 
 ---
 
-### 5. SNS IdP の追加（オプション）
+### 4. SNS IdP の追加（オプション）
 
 各プロバイダーのデベロッパーコンソールで OAuth 認証情報を取得し、
 `infrastructure/lib/stack.ts` のコメントアウトを解除して再デプロイ：
@@ -337,7 +384,7 @@ selfSignUpEnabled: true,
 
 ```bash
 export GITHUB_TOKEN=ghp_xxxx
-export AMPLIFY_DOMAIN=main.xxxxxxxxxx.amplifyapp.com
+export CUSTOM_DOMAIN=your-subdomain.your-domain.com
 cd infrastructure && cdk deploy --require-approval never
 ```
 

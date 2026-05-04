@@ -1,6 +1,6 @@
 export interface HealthData {
   dates: string[];
-  weights: number[];
+  weights: (number | null)[];
   calories: number[];
   sma7: number[];
   body_fat_percents: (number | null)[];

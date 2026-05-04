@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+RED='\033[0;31m'
+YELLOW='\033[1;33m'
+GREEN='\033[0;32m'
+NC='\033[0m'
+
+echo "Running pre-commit checks..."
+
+# ── 1. gitleaks ──────────────────────────────────────────────────────────────
+if command -v gitleaks &>/dev/null; then
+  if ! gitleaks protect --staged --config .gitleaks.toml -v 2>&1; then
+    echo -e "${RED}[BLOCKED] gitleaks detected secrets. Fix before committing.${NC}"
+    exit 1
+  fi
+  echo -e "${GREEN}[OK] gitleaks: no secrets detected${NC}"
+else
+  echo -e "${YELLOW}[SKIP] gitleaks not installed (brew install gitleaks)${NC}"
+fi
+
+# ── 2. Project-specific pattern check ────────────────────────────────────────
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+FOUND=0
+
+check_pattern() {
+  local label="$1"
+  local pattern="$2"
+  local result
+  result=$(git diff --cached -U0 -- ':!.githooks/*' ':!.gitleaks.toml' \
+    | grep '^+' | grep -v '^+++' | grep -E "$pattern" \
+    | grep -v -E 'YOUR_[A-Z_]+|<[A-Z_]+>|xxxx+|placeholder|形式' || true)
+  if [ -n "$result" ]; then
+    echo -e "${RED}[BLOCKED] $label:${NC}"
+    echo "$result" | head -5
+    FOUND=1
+  fi
+}
+
+# Cognito User Pool ID 形式 (ap-northeast-1_XXXXXXXXX)
+check_pattern "Cognito User Pool ID" '[a-z]{2}-[a-z]+-[0-9]+_[A-Za-z0-9]{9,}'
+
+# Route53 Hosted Zone ID 形式 (Z + 18文字以上の英数字)
+check_pattern "Route53 Hosted Zone ID" '\bZ[A-Z0-9]{18,}\b'
+
+# 実 AWS アカウント ID が ARN に含まれる形式
+check_pattern "AWS Account ID in ARN" 'arn:aws:[a-z0-9-]+:[a-z0-9-]*:[0-9]{12}:'
+
+# Amplify App ID が URL に含まれる形式
+check_pattern "Amplify App ID in URL" 'amplifyapp\.com/apps/[a-z0-9]+'
+
+# CloudFront Distribution ID が URL に含まれる形式
+check_pattern "CloudFront Distribution ID" '[a-z0-9]{13,14}\.cloudfront\.net'
+
+if [ "$FOUND" -eq 1 ]; then
+  echo ""
+  echo -e "${RED}Commit blocked. Remove or replace sensitive values with placeholders.${NC}"
+  echo -e "  Examples: YOUR_USER_POOL_ID, <APIGW_ID>, your-domain.com"
+  exit 1
+fi
+
+echo -e "${GREEN}[OK] Custom patterns: no sensitive values detected${NC}"
+exit 0

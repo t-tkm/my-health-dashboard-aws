@@ -35,3 +35,6 @@ dummy_health_data.csv
 .kiro/sessions/
 .kiro/**/*.log
 .kiro/local-settings.json
+
+# Others
+command.txt

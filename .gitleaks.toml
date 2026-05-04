@@ -1,0 +1,41 @@
+title = "health-dashboard gitleaks config"
+
+[extend]
+useDefault = true
+
+[[rules]]
+id = "cognito-user-pool-id"
+description = "Amazon Cognito User Pool ID"
+regex = '''[a-z]{2}-[a-z]+-[0-9]+_[A-Za-z0-9]{9,}'''
+tags = ["aws", "cognito"]
+
+[[rules]]
+id = "route53-hosted-zone-id"
+description = "Route53 Hosted Zone ID"
+regex = '''\bZ[A-Z0-9]{18,}\b'''
+tags = ["aws", "route53"]
+
+[[rules]]
+id = "aws-account-id-in-arn"
+description = "AWS Account ID in ARN"
+regex = '''arn:aws:[a-z0-9\-]+:[a-z0-9\-]*:[0-9]{12}:'''
+tags = ["aws"]
+
+[[rules]]
+id = "amplify-app-id"
+description = "Amplify App ID (in URL)"
+regex = '''amplifyapp\.com/apps/[a-z0-9]{10,}'''
+tags = ["aws", "amplify"]
+
+[allowlist]
+description = "Allow placeholder values"
+regexes = [
+  '''YOUR_[A-Z_]+''',
+  '''<[A-Z_]+>''',
+  '''xxxx''',
+  '''xxxxxxxxxx''',
+]
+paths = [
+  '''\.gitleaks\.toml''',
+  '''\.githooks/''',
+]

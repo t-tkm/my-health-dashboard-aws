@@ -1,5 +1,27 @@
 # AI-DLC Audit Log
 
+## Documentation Update — カスタムドメイン実デプロイ検証・ドキュメント整合
+**Timestamp**: 2026-05-04T11:30:00Z
+**User Input**: "using ai-dlc, ドキュメント一式、README含め整合させて更新しておく。"
+**AI Response**: カスタムドメイン実デプロイで判明した知見（CfnDomain race condition 修正、CNAME 削除→再試行フロー、Amplify 新コンソールの表示挙動）を README・aidlc-state.md に反映。
+**Context**: ドキュメント整備 — 実デプロイ検証結果の反映
+
+---
+
+## CDK Redeploy — カスタムドメイン動作検証（cdk destroy + cdk deploy）
+**Timestamp**: 2026-05-04T11:00:00Z
+**User Input**: "cdk destory後、cdk deployするとエラー: AmplifyCustomDomain は CREATE_FAILED"
+**AI Response**: CfnDomain が CfnBranch より先に作成される race condition を発見。`cfnDomain.addDependency(mainBranch)` を追加して修正。修正後の再デプロイで CREATE_COMPLETE を確認。
+**Context**: バグ修正 — CfnDomain 依存関係エラー（infrastructure/lib/stack.ts）
+
+## CDK Redeploy — SSL設定失敗・CloudFront 競合
+**Timestamp**: 2026-05-04T11:15:00Z
+**User Input**: "同じエラーです: DNS record that points to another CloudFront distribution"
+**AI Response**: cdk destroy で旧アプリの CloudFront (<OLD_CF_DISTRIBUTION_ID>) が削除され、再デプロイで新 CloudFront (<CF_DISTRIBUTION_ID>) が割り当てられたが、Route53 CNAME は旧値のまま。別アカウントの Route53 で旧 CNAME 削除 → Amplify 再試行 → SSL 成功。新 CloudFront エンドポイントを Route53 に再設定。
+**Context**: 運用手順 — 再デプロイ時の CNAME 競合解消手順
+
+---
+
 ## Build and Test Stage — Custom Domain
 **Timestamp**: 2026-04-29T00:10:00Z
 **Build Status**: cdk synth 正常完了（TypeScript エラーなし）
