@@ -65,14 +65,14 @@
 
 | リソース | 値 |
 |---|---|
-| Amplify App ID | YOUR_AMPLIFY_APP_ID |
-| Amplify デフォルト URL | https://main.YOUR_AMPLIFY_APP_ID.amplifyapp.com |
+| Amplify App ID | <AMPLIFY_APP_ID> |
+| Amplify デフォルト URL | https://main.<AMPLIFY_APP_ID>.amplifyapp.com |
 | カスタムドメイン | https://your-subdomain.your-domain.com |
-| API Gateway | https://YOUR_APIGW_ID.execute-api.ap-northeast-1.amazonaws.com/prod/ |
-| Cognito User Pool ID | YOUR_USER_POOL_ID |
-| Cognito Client ID | YOUR_USER_POOL_CLIENT_ID |
-| Cognito ドメイン | https://health-dashboard-YOUR_AWS_ACCOUNT_ID.auth.ap-northeast-1.amazoncognito.com |
-| CloudFront (カスタムドメイン向け) | YOUR_CF_DISTRIBUTION_ID.cloudfront.net |
+| API Gateway | https://<APIGW_ID>.execute-api.ap-northeast-1.amazonaws.com/prod/ |
+| Cognito User Pool ID | <USER_POOL_ID> |
+| Cognito Client ID | <USER_POOL_CLIENT_ID> |
+| Cognito ドメイン | https://health-dashboard-<AWS_ACCOUNT_ID>.auth.ap-northeast-1.amazoncognito.com |
+| CloudFront (カスタムドメイン向け) | <CF_DISTRIBUTION_ID>.cloudfront.net |
 
 ## 既知の挙動・注意事項
 

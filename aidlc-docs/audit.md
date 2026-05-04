@@ -17,7 +17,7 @@
 ## CDK Redeploy — SSL設定失敗・CloudFront 競合
 **Timestamp**: 2026-05-04T11:15:00Z
 **User Input**: "同じエラーです: DNS record that points to another CloudFront distribution"
-**AI Response**: cdk destroy で旧アプリの CloudFront (YOUR_OLD_CF_DISTRIBUTION_ID) が削除され、再デプロイで新 CloudFront (YOUR_CF_DISTRIBUTION_ID) が割り当てられたが、Route53 CNAME は旧値のまま。別アカウントの Route53 で旧 CNAME 削除 → Amplify 再試行 → SSL 成功。新 CloudFront エンドポイントを Route53 に再設定。
+**AI Response**: cdk destroy で旧アプリの CloudFront (<OLD_CF_DISTRIBUTION_ID>) が削除され、再デプロイで新 CloudFront (<CF_DISTRIBUTION_ID>) が割り当てられたが、Route53 CNAME は旧値のまま。別アカウントの Route53 で旧 CNAME 削除 → Amplify 再試行 → SSL 成功。新 CloudFront エンドポイントを Route53 に再設定。
 **Context**: 運用手順 — 再デプロイ時の CNAME 競合解消手順
 
 ---
