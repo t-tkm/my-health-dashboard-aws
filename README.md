@@ -135,6 +135,22 @@ aws sts get-caller-identity
 
 必要な権限の目安（管理者ロール推奨）：`dynamodb:*` / `lambda:*` / `apigateway:*` / `cognito-idp:*` / `iam:CreateRole` / `cloudformation:*` / `s3:*`
 
+#### 必須環境変数
+
+`cdk deploy` / `cdk destroy` の実行前に必ず設定すること。未設定の場合は CDK がエラーで停止する。
+
+| 変数 | 説明 | 例 |
+|---|---|---|
+| `GITHUB_TOKEN` | Amplify が GitHub リポジトリに接続するための Personal Access Token | `ghp_xxxx` |
+| `CUSTOM_DOMAIN` | アプリに使用するカスタムドメイン（`サブドメイン.ルートドメイン` 形式） | `health.t-tkm.link` |
+
+```bash
+export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+export CUSTOM_DOMAIN=health.t-tkm.link
+```
+
+> **CUSTOM_DOMAIN の前提**: 指定するドメインのルートゾーン（例: `t-tkm.link`）を Route53 で管理していること。別 AWS アカウントの Route53 ホストゾーンでも利用可能。
+
 ### 1. GitHub Personal Access Token を用意する（初回のみ）
 
 CDK が Amplify と GitHub を連携するために PAT が必要。
@@ -150,70 +166,34 @@ CDK が Amplify と GitHub を連携するために PAT が必要。
    - Scope: **`repo`** と **`admin:repo_hook`** にチェック（Amplify が webhook を作成するために必要）
 7. 表示されたトークン（`ghp_xxx...`）をコピー（この画面を閉じると二度と表示されない）
 
+### 2. CDK でインフラをデプロイ
+
+Amplify アプリ・Cognito・Lambda・DynamoDB・API Gateway がすべて一括デプロイされる。  
+`VITE_*` 環境変数は CDK が Amplify に自動設定するため、コンソールでの手動設定は不要。
+
 ```bash
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
-```
-
-### 2. CDK でインフラをデプロイ（Step 1）
-
-Amplify アプリ・Cognito・Lambda・DynamoDB・API Gateway がすべて一括デプロイされる。
-
-```bash
+export CUSTOM_DOMAIN=health.t-tkm.link
 cd infrastructure
-npm install
-cdk bootstrap   # 初回のみ
+npm install        # 初回のみ
+cdk bootstrap      # 初回のみ
 cdk deploy
 ```
 
-デプロイ後、出力の `AmplifyAppUrl` を確認する：
+デプロイ後の出力例：
 
 ```
 Outputs:
-  HealthDashboardStack.AmplifyAppUrl    = https://main.xxxxxxxxxx.amplifyapp.com  ← コピーしておく
+  HealthDashboardStack.AmplifyAppUrl    = https://health.t-tkm.link
   HealthDashboardStack.ApiEndpoint      = https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/prod/
   HealthDashboardStack.UserPoolId       = ap-northeast-1_xxxxxxxxx
   HealthDashboardStack.UserPoolClientId = xxxxxxxxxxxxxxxxxxxxxxxxxx
   HealthDashboardStack.CognitoDomain    = https://health-dashboard-xxxxxxxxxxxx.auth.ap-northeast-1.amazoncognito.com
 ```
 
-### 3. Cognito に Amplify URL を追加（Step 2）
+### 3. CNAME レコードを Route53 に追加（初回のみ）
 
-Step 1 で取得した `AmplifyAppUrl` を `AMPLIFY_DOMAIN` に設定して再デプロイする。
-これにより Cognito の callbackUrls に本番 URL が追加される。
-
-```bash
-export AMPLIFY_DOMAIN=main.xxxxxxxxxx.amplifyapp.com   # https:// は不要
-cdk deploy
-```
-
-`VITE_*` 環境変数は CDK が Amplify に自動設定するため、コンソールでの手動設定は不要。
-
-### 4. カスタムドメインの設定（オプション）
-
-独自ドメイン（例: `health.t-tkm.link`）を使用したい場合に設定する。  
-デフォルトは Amplify が自動生成するドメイン（`main.<appId>.amplifyapp.com`）を使用するため、この手順は不要。
-
-> **前提**: `CUSTOM_DOMAIN` に指定するドメインのルートゾーン（例: `t-tkm.link`）を Route53 で管理していること。  
-> 別 AWS アカウントの Route53 ホストゾーンでも利用可能。
-
-#### 4-1. CUSTOM_DOMAIN を指定して CDK デプロイ
-
-```bash
-export GITHUB_TOKEN=ghp_xxxx
-export CUSTOM_DOMAIN=health.t-tkm.link   # サブドメイン.ルートドメイン の形式
-cd infrastructure
-cdk deploy
-```
-
-`CUSTOM_DOMAIN` を設定すると：
-- Cognito の callbackUrls がカスタムドメイン URL のみに設定される（Amplify 自動ドメインは除外）
-- Amplify に `CfnDomain` リソースが作成され、ACM 証明書が自動発行される
-
-> **注意**: `CUSTOM_DOMAIN` を設定した場合、`AMPLIFY_DOMAIN` は不要（Step 2〜3 の手順は不要）。
-
-#### 4-2. CNAME レコードを Route53 に追加
-
-デプロイ後、Amplify がドメイン検証用の CNAME レコードを要求する。
+デプロイ後、Amplify がカスタムドメインの検証用 CNAME レコードを要求する。この手順は**初回デプロイ時のみ**必要。
 
 1. [Amplify コンソール](https://console.aws.amazon.com/amplify/) を開く
 2. アプリ `health-dashboard` → **Domain management** を選択
@@ -229,23 +209,12 @@ cdk deploy
 値:  <appId>.cloudfront.net
 ```
 
-#### 4-3. DNS 伝播を待つ
-
 DNS の伝播には数分〜最大 48 時間かかる場合がある。  
 Amplify コンソールの Domain management で「Available」と表示されれば設定完了。
 
-#### カスタムドメインを無効にする場合
-
-```bash
-# CUSTOM_DOMAIN を外して再デプロイ（Amplify 自動ドメインに戻る）
-unset CUSTOM_DOMAIN
-export AMPLIFY_DOMAIN=main.<appId>.amplifyapp.com
-cdk deploy
-```
-
 ---
 
-### 5. SNS IdP の追加（オプション）
+### 4. SNS IdP の追加（オプション）
 
 各プロバイダーのデベロッパーコンソールで OAuth 認証情報を取得し、
 `infrastructure/lib/stack.ts` のコメントアウトを解除して再デプロイ：
@@ -337,7 +306,7 @@ selfSignUpEnabled: true,
 
 ```bash
 export GITHUB_TOKEN=ghp_xxxx
-export AMPLIFY_DOMAIN=main.xxxxxxxxxx.amplifyapp.com
+export CUSTOM_DOMAIN=health.t-tkm.link
 cd infrastructure && cdk deploy --require-approval never
 ```
 
