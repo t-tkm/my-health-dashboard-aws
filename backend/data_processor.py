@@ -202,8 +202,10 @@ def compute(items: list[dict]) -> dict:
 
 
 def put_entry(user_id: str, date: str, weight=None, body_fat_percent=None,
-              nutrition: dict | None = None, targets: dict | None = None) -> None:
+              nutrition: dict | None = None, targets: dict | None = None,
+              clear_fields: set | None = None) -> None:
     """1日分を追加/更新する。存在しない日は前日のターゲット値を引き継ぐ。"""
+    clear_fields = clear_fields or set()
     table = _get_table()
 
     existing = table.get_item(Key={'userId': user_id, 'date': date}).get('Item', {})
@@ -225,7 +227,7 @@ def put_entry(user_id: str, date: str, weight=None, body_fat_percent=None,
             val = None
         if val is not None:
             item[db_key] = _to_decimal(val)
-        elif db_key in existing:
+        elif field not in clear_fields and db_key in existing:
             item[db_key] = existing[db_key]
 
     for t in _TARGET_FIELDS:
