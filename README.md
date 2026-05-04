@@ -205,7 +205,14 @@ Outputs:
   HealthDashboardStack.CognitoDomain    = https://health-dashboard-xxxxxxxxxxxx.auth.ap-northeast-1.amazoncognito.com
 ```
 
-### 3. CNAME レコードを Route53 に追加（初回のみ）
+### 3. Amplify の初回ビルドをトリガー
+
+`cdk deploy` 直後は Amplify アプリが作成されるが、ビルドは自動実行されない。
+Amplify コンソール → `health-dashboard` → 「概要」→ `main` ブランチ → **「デプロイを実行」** をクリックする。
+
+完了まで数分かかる。完了後は GitHub の `main` ブランチへの push で自動デプロイが有効になる。
+
+### 4. CNAME レコードを Route53 に追加（初回のみ）
 
 デプロイ後、2 種類の CNAME レコードを Route53 に追加する必要がある。
 
@@ -221,6 +228,9 @@ Outputs:
 1. [Amplify コンソール](https://console.aws.amazon.com/amplify/) を開く
 2. アプリ `health-dashboard` → **Domain management** を選択
 3. 画面に表示される 2 件の CNAME レコードの **名前** と **値** をそれぞれメモする
+
+> **Amplify コンソールの表示に関する注意**: 新しい Amplify コンソール（2025年以降）では、CDK（CloudFormation）経由で設定したカスタムドメインが Domain management に表示されないことがある。
+> その場合は CloudFormation コンソール → `HealthDashboardStack` → 「リソース」タブ → `AmplifyCustomDomain` のリンクから直接ドメイン設定画面にアクセスできる。
 
 #### Route53 への追加手順
 
@@ -264,7 +274,18 @@ aws route53 change-resource-record-sets \
   --profile root-admin
 ```
 
-> **再デプロイ時の注意**: `cdk deploy` のたびに CloudFront のエンドポイント（`<appId>.cloudfront.net`）が変わる場合がある。その場合はレコード 2 を `"Action": "UPSERT"` で更新する。レコード 1（ACM 検証）は変わらないため再追加不要。
+> **再デプロイ時の注意（特に cdk destroy → cdk deploy の場合）**:
+> `cdk destroy` 後に再デプロイすると CloudFront のエンドポイントが変わる。
+> このとき古い CNAME が残っていると Amplify の SSL 設定が "points to another CloudFront distribution" エラーで失敗する。
+>
+> **対処手順**:
+> 1. Route53 で `health.t-tkm.link` の CNAME レコードを**削除**する
+> 2. Amplify コンソール → Domain management → 「再試行」をクリック
+> 3. 新しい CNAME 値（新しい `xxxx.cloudfront.net`）が表示されるのでメモ
+> 4. Route53 に新しい値で CNAME を**作成**する
+>
+> `"Action": "UPSERT"` では解決しない（Amplify が新旧 CF の競合を DNS レベルで検出するため）。
+> レコード 1（ACM 検証: `_hash.t-tkm.link`）は再デプロイ後も変わらないため再追加不要。
 
 DNS 伝播には数分〜最大 48 時間かかる場合がある。  
 Amplify コンソールの Domain management で **「Available」** と表示されれば設定完了。

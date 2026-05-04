@@ -57,6 +57,26 @@
 
 ## Current Status
 
-- **Lifecycle Phase**: CONSTRUCTION PHASE（カスタムドメインオプション機能追加）
-- **Current Stage**: Build and Test 完了
-- **Next Stage**: デプロイ（README の「カスタムドメインの設定」セクション参照）
+- **Lifecycle Phase**: OPERATIONS PHASE（本番稼働中）
+- **Current Stage**: 全フェーズ完了
+- **Last Updated**: 2026-05-04
+
+## 本番環境（2026-05-04 時点）
+
+| リソース | 値 |
+|---|---|
+| Amplify App ID | d26nlqzhwk67p |
+| Amplify デフォルト URL | https://main.d26nlqzhwk67p.amplifyapp.com |
+| カスタムドメイン | https://health.t-tkm.link |
+| API Gateway | https://imq0y07nz4.execute-api.ap-northeast-1.amazonaws.com/prod/ |
+| Cognito User Pool ID | ap-northeast-1_gIPXApTdX |
+| Cognito Client ID | 378hu4amsoo4h6aif1a0drj3j6 |
+| Cognito ドメイン | https://health-dashboard-808429991942.auth.ap-northeast-1.amazoncognito.com |
+| CloudFront (カスタムドメイン向け) | d3sd7gq2rgkqfb.cloudfront.net |
+
+## 既知の挙動・注意事項
+
+- **cdk destroy → cdk deploy 時**: CloudFront エンドポイントが変わるため、Route53 の CNAME を削除してから Amplify コンソールで「再試行」する必要がある（README 参照）
+- **CfnDomain race condition**: `cfnDomain.addDependency(mainBranch)` で解消済み（2026-05-04 修正）
+- **Amplify 新コンソール**: CDK 経由のカスタムドメインが Domain management に表示されない場合は CloudFormation → AmplifyCustomDomain リンクから確認
+- **t-tkm.link Route53**: 別 AWS アカウントで管理（CNAME 変更時は別アカウントにログインが必要）

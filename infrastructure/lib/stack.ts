@@ -67,7 +67,7 @@ export class HealthDashboardStack extends cdk.Stack {
       ],
     });
 
-    new amplify.CfnBranch(this, 'MainBranch', {
+    const mainBranch = new amplify.CfnBranch(this, 'MainBranch', {
       appId: amplifyApp.attrAppId,
       branchName: 'main',
       enableAutoBuild: true,
@@ -83,12 +83,13 @@ export class HealthDashboardStack extends cdk.Stack {
       const domainParts = customDomain.split('.');
       const prefix      = domainParts[0];
       const rootDomain  = domainParts.slice(1).join('.');
-      new amplify.CfnDomain(this, 'AmplifyCustomDomain', {
+      const cfnDomain = new amplify.CfnDomain(this, 'AmplifyCustomDomain', {
         appId:    amplifyApp.attrAppId,
         domainName: rootDomain,
         subDomainSettings: [{ branchName: 'main', prefix }],
         enableAutoSubDomain: false,
       });
+      cfnDomain.addDependency(mainBranch);
     }
 
     // ------------------------------------------------------------------ Cognito User Pool
