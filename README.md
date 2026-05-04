@@ -139,16 +139,14 @@ aws sts get-caller-identity
 
 `cdk deploy` / `cdk destroy` の実行前に必ず設定すること。未設定の場合は CDK がエラーで停止する。
 
-| 変数 | 必須 | 説明 | 例 |
-|---|---|---|---|
-| `GITHUB_TOKEN` | ✅ | Amplify が GitHub リポジトリに接続するための Personal Access Token | `ghp_xxxx` |
-| `CUSTOM_DOMAIN` | ✅ | アプリに使用するカスタムドメイン（`サブドメイン.ルートドメイン` 形式） | `health.t-tkm.link` |
-| `AMPLIFY_DEFAULT_URL` | 任意 | Amplify 自動ドメインも Cognito に登録したい場合に設定（初回デプロイ後に確認） | `main.dx658lz9lnttf.amplifyapp.com` |
+| 変数 | 説明 | 例 |
+|---|---|---|
+| `GITHUB_TOKEN` | Amplify が GitHub リポジトリに接続するための Personal Access Token | `ghp_xxxx` |
+| `CUSTOM_DOMAIN` | アプリに使用するカスタムドメイン（`サブドメイン.ルートドメイン` 形式） | `health.t-tkm.link` |
 
 ```bash
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
 export CUSTOM_DOMAIN=health.t-tkm.link
-export AMPLIFY_DEFAULT_URL=main.<appId>.amplifyapp.com   # 2回目以降のデプロイで設定
 ```
 
 > **CUSTOM_DOMAIN の前提**: 指定するドメインのルートゾーン（例: `t-tkm.link`）を Route53 で管理していること。別 AWS アカウントの Route53 ホストゾーンでも利用可能。

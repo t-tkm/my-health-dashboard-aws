@@ -74,14 +74,7 @@ export class HealthDashboardStack extends cdk.Stack {
     });
 
     // Cognito callback URLs: localhost + custom domain + Amplify default domain (if provided)
-    // AMPLIFY_DEFAULT_URL は循環依存回避のため env var で渡す（初回デプロイ後に設定）
-    // 例: export AMPLIFY_DEFAULT_URL=main.<appId>.amplifyapp.com
-    const amplifyDefaultUrl = process.env.AMPLIFY_DEFAULT_URL;
-    const callbackUrls = [
-      'http://localhost:5173',
-      `https://${customDomain}`,
-      ...(amplifyDefaultUrl ? [`https://${amplifyDefaultUrl}`] : []),
-    ];
+    const callbackUrls = ['http://localhost:5173', `https://${customDomain}`];
 
     // Optional: Custom domain — enable by setting CUSTOM_DOMAIN=<subdomain>.<rootdomain>
     // (e.g. CUSTOM_DOMAIN=health.t-tkm.link cdk deploy)
