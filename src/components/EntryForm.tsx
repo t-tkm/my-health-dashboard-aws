@@ -29,8 +29,8 @@ function today(): string {
   return new Date().toLocaleDateString('sv-SE');
 }
 
-function numStr(v: number): string {
-  return v !== 0 ? String(v) : '';
+function numStr(v: number | null | undefined): string {
+  return v != null ? String(v) : '';
 }
 
 function valuesForDate(data: HealthData | null, date: string): Omit<FormState, 'date'> {
@@ -52,9 +52,10 @@ function valuesForDate(data: HealthData | null, date: string): Omit<FormState, '
   };
 }
 
-function parseOptional(v: string): number | undefined {
+function parseField(v: string, clearOnEmpty: boolean): number | null | undefined {
   const n = parseFloat(v);
-  return isNaN(n) ? undefined : n;
+  if (isNaN(n)) return clearOnEmpty ? null : undefined;
+  return n;
 }
 
 export default function EntryForm({ data, onClose, onSaved }: Props) {
@@ -82,18 +83,20 @@ export default function EntryForm({ data, onClose, onSaved }: Props) {
     setError(null);
 
     const body: Record<string, unknown> = { date: form.date };
-    const w = parseOptional(form.weight);
+    const w = parseField(form.weight, hasExisting);
     if (w !== undefined) body.weight = w;
-    const bf = parseOptional(form.body_fat_percent);
+    const bf = parseField(form.body_fat_percent, hasExisting);
     if (bf !== undefined) body.body_fat_percent = bf;
 
     const nutritionKeys = ['calories', 'protein_g', 'fat_g', 'carb_g', 'sugar_g', 'fiber_g', 'salt_g'] as const;
     for (const k of nutritionKeys) {
-      const v = parseOptional(form[k]);
+      const v = parseField(form[k], hasExisting);
       if (v !== undefined) body[k] = v;
     }
 
-    const allEmpty = !body.weight && !body.body_fat_percent && nutritionKeys.every(k => !(k in body));
+    const allEmpty = body.weight == null
+      && body.body_fat_percent == null
+      && nutritionKeys.every(k => !(k in body) || body[k] == null);
 
     if (allEmpty && !hasExisting) {
       setError('体重か栄養素のどちらかを入力してください');
