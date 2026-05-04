@@ -28,14 +28,12 @@ export class HealthDashboardStack extends cdk.Stack {
     });
 
     // ------------------------------------------------------------------ Domain config
-    // CUSTOM_DOMAIN=health.t-tkm.link で独自ドメインを有効化（省略時は Amplify 自動ドメイン）
-    // 循環依存回避のため AMPLIFY_DOMAIN は Step2 デプロイ時のみ設定する（CUSTOM_DOMAIN と排他）
-    const customDomain   = process.env.CUSTOM_DOMAIN;
-    const amplifyDomain  = process.env.AMPLIFY_DOMAIN;
-    const amplifyUrl     = amplifyDomain ? `https://${amplifyDomain}` : null;
-    const callbackUrls   = customDomain
-      ? ['http://localhost:5173', `https://${customDomain}`]
-      : ['http://localhost:5173', ...(amplifyUrl ? [amplifyUrl] : [])];
+    // CUSTOM_DOMAIN=health.t-tkm.link で独自ドメインを指定する（必須）
+    const customDomain = process.env.CUSTOM_DOMAIN;
+    if (!customDomain) {
+      throw new Error('環境変数 CUSTOM_DOMAIN を設定してください（例: health.t-tkm.link）');
+    }
+    const callbackUrls = ['http://localhost:5173', `https://${customDomain}`];
 
     // ------------------------------------------------------------------ Amplify App
     // GitHub Token は cdk deploy 前に export GITHUB_TOKEN=<PAT> で設定する
@@ -387,17 +385,13 @@ export class HealthDashboardStack extends cdk.Stack {
 
     // ------------------------------------------------------------------ Outputs
     new cdk.CfnOutput(this, 'AmplifyAppUrl', {
-      value: customDomain ? `https://${customDomain}` : `https://main.${amplifyApp.attrDefaultDomain}`,
-      description: customDomain
-        ? 'カスタムドメイン有効 — DNS 設定後にアクセス可能 (README の「カスタムドメイン」セクション参照)'
-        : 'Step2: export AMPLIFY_DOMAIN=main.<appId>.amplifyapp.com && cdk deploy',
+      value: `https://${customDomain}`,
+      description: 'カスタムドメイン有効 — DNS 設定後にアクセス可能 (README の「カスタムドメイン」セクション参照)',
     });
-    if (customDomain) {
-      new cdk.CfnOutput(this, 'CustomDomainDnsSetup', {
-        value: `Amplify コンソール → Domain management で CNAME レコードを確認し、Route53 ホストゾーンに追加してください`,
-        description: `カスタムドメイン (${customDomain}) の DNS 設定 — README 参照`,
-      });
-    }
+    new cdk.CfnOutput(this, 'CustomDomainDnsSetup', {
+      value: 'Amplify コンソール → Domain management で CNAME レコードを確認し、Route53 ホストゾーンに追加してください',
+      description: `カスタムドメイン (${customDomain}) の DNS 設定 — README 参照`,
+    });
     new cdk.CfnOutput(this, 'ApiEndpoint',      { value: api.url,                        exportName: 'ApiEndpoint' });
     new cdk.CfnOutput(this, 'UserPoolId',       { value: userPool.userPoolId,             exportName: 'UserPoolId' });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId, exportName: 'UserPoolClientId' });
