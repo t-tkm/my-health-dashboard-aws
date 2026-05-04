@@ -387,11 +387,11 @@ export class HealthDashboardStack extends cdk.Stack {
     // ------------------------------------------------------------------ Outputs
     new cdk.CfnOutput(this, 'AmplifyAppUrl', {
       value: `https://${customDomain}`,
-      description: 'カスタムドメイン有効 — DNS 設定後にアクセス可能 (README の「カスタムドメイン」セクション参照)',
+      description: 'Custom domain URL - accessible after DNS CNAME is set (see README)',
     });
     new cdk.CfnOutput(this, 'CustomDomainDnsSetup', {
-      value: 'Amplify コンソール → Domain management で CNAME レコードを確認し、Route53 ホストゾーンに追加してください',
-      description: `カスタムドメイン (${customDomain}) の DNS 設定 — README 参照`,
+      value: `Check Amplify console > Domain management for required CNAME records, then add to Route53`,
+      description: `DNS setup required for custom domain (${customDomain}) - see README`,
     });
     new cdk.CfnOutput(this, 'ApiEndpoint',      { value: api.url,                        exportName: 'ApiEndpoint' });
     new cdk.CfnOutput(this, 'UserPoolId',       { value: userPool.userPoolId,             exportName: 'UserPoolId' });
