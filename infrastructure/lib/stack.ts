@@ -33,8 +33,6 @@ export class HealthDashboardStack extends cdk.Stack {
     if (!customDomain) {
       throw new Error('環境変数 CUSTOM_DOMAIN を設定してください（例: your-subdomain.your-domain.com）');
     }
-    const callbackUrls = ['http://localhost:5173', `https://${customDomain}`];
-
     // ------------------------------------------------------------------ Amplify App
     // GitHub Token は cdk deploy 前に export GITHUB_TOKEN=<PAT> で設定する
     const amplifyApp = new amplify.CfnApp(this, 'AmplifyApp', {
@@ -74,6 +72,14 @@ export class HealthDashboardStack extends cdk.Stack {
       branchName: 'main',
       enableAutoBuild: true,
     });
+
+    // Cognito callback URLs: always include localhost, Amplify default domain, and custom domain
+    const amplifyDefaultUrl = `https://main.${amplifyApp.attrDefaultDomain}`;
+    const callbackUrls = [
+      'http://localhost:5173',
+      amplifyDefaultUrl,
+      `https://${customDomain}`,
+    ];
 
     // Optional: Custom domain — enable by setting CUSTOM_DOMAIN=<subdomain>.<rootdomain>
     // (e.g. CUSTOM_DOMAIN=your-subdomain.your-domain.com cdk deploy)
@@ -187,7 +193,7 @@ export class HealthDashboardStack extends cdk.Stack {
 
     const lambdaEnv: Record<string, string> = {
       TABLE_NAME:      table.tableName,
-      ALLOWED_ORIGINS: callbackUrls.join(','),
+      ALLOWED_ORIGINS: cdk.Fn.join(',', callbackUrls),
     };
 
     const backendDir = path.join(__dirname, '../../backend');
