@@ -319,8 +319,8 @@ export class HealthDashboardStack extends cdk.Stack {
       queryString: [
         'fields @timestamp, type, username',
         '| filter type = "login_attempt" or type = "login_success"',
-        '| stats count_if(type = "login_attempt") as attempts,',
-        '        count_if(type = "login_success") as successes by username, bin(5m)',
+        '| stats sum(if(type = "login_attempt", 1, 0)) as attempts,',
+        '        sum(if(type = "login_success", 1, 0)) as successes by username, bin(5m)',
         '| filter successes = 0 and attempts > 0',
         '| sort bin desc',
       ].join('\n'),

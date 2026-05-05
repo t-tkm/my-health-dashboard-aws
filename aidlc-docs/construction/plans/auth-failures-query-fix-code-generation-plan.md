@@ -21,7 +21,7 @@
 ## Step 2: コード修正
 - [x] `logs.QueryDefinition` → `logs.CfnQueryDefinition` に変更
 - [x] 対象ロググループを PreAuth のみ → PreAuth + PostAuth 両方に変更
-- [x] クエリを `count_if` 集計ベース（5分窓）に変更し、試行あり・成功なしのみ抽出
+- [x] クエリを `sum(if(...))` 集計ベース（5分窓）に変更し、試行あり・成功なしのみ抽出（`count_if` は未サポートのため `sum(if(...,1,0))` で代替）
 
 ## Step 3: ドキュメント更新
 - [x] `README.md` — 付録の保存済みクエリ一覧の auth-failures 行を更新
