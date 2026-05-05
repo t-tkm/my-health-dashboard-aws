@@ -317,11 +317,10 @@ export class HealthDashboardStack extends cdk.Stack {
         '/aws/lambda/health-dashboard-postauth',
       ],
       queryString: [
-        'fields @timestamp, type, username',
+        'fields @timestamp, username, @log',
         '| filter type = "login_attempt" or type = "login_success"',
-        '| stats sum(if(type = "login_attempt", 1, 0)) as attempts,',
-        '        sum(if(type = "login_success", 1, 0)) as successes by username, bin(5m)',
-        '| filter successes = 0 and attempts > 0',
+        '| stats count(*) as events by username, @log, bin(5m)',
+        '| filter @log like "preauth"',
         '| sort bin desc',
       ].join('\n'),
     });

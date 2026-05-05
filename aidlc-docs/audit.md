@@ -1,10 +1,10 @@
 # AI-DLC Audit Log
 
-## Fix: auth-failures クエリ count_if → sum(if) 修正（#13）
-**Timestamp**: 2026-05-05T01:00:00Z
-**User Input**: "yes"
-**AI Response**: `count_if` が CloudWatch Logs Insights 未サポートのため `sum(if(type = "...", 1, 0))` に変更。
-**Context**: バグ修正 — infrastructure/lib/stack.ts
+## Fix: auth-failures クエリを動作する実装に修正（#13）
+**Timestamp**: 2026-05-05T01:30:00Z
+**User Input**: "A"
+**AI Response**: CloudWatch Logs Insights の制約（`count_if`/`sum(if(...))`/`min(string)` 未サポート）を調査・確認後、`stats count(*) by username, @log, bin(5m)` + `filter @log like "preauth"` アプローチで動作確認。README も実態に合わせて更新。
+**Context**: バグ修正 — infrastructure/lib/stack.ts, README.md
 
 ---
 

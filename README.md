@@ -591,5 +591,5 @@ CDK デプロイ時に以下のクエリが自動登録されます。マネジ�
 | `health-dashboard/lambda-access-log` | 全 Lambda | アクセスログ一覧（`type = "access"` のみ） |
 | `health-dashboard/lambda-errors` | 全 Lambda | エラーログ一覧（`type = "error"` のみ） |
 | `health-dashboard/auth-all-attempts` | PreAuth + PostAuth | 全認証イベント（試行・成功の両方） |
-| `health-dashboard/auth-failures` | PreAuth + PostAuth | 認証失敗のみ（試行あり・成功なしの組み合わせを 5 分窓で集計） |
+| `health-dashboard/auth-failures` | PreAuth + PostAuth | ログイン試行の集計（5 分窓、username × 試行回数）。成功直前の試行も含む |
 | `health-dashboard/auth-successes` | PostAuth | ログイン成功のみ |
