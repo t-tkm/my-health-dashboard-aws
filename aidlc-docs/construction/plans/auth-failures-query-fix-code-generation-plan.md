@@ -31,3 +31,12 @@
 
 ## Step 4: ビルド確認
 - [x] `cd infrastructure && npx cdk synth` でコンパイルエラーがないことを確認
+
+## Step 5: 全クエリ名見直し（追加作業）
+- [x] `api-access-summary` → `api-access`
+- [x] `lambda-access-log` → `lambda-access`
+- [x] `auth-all-attempts` → `auth-events`（CDK construct ID: `QueryAuthAttempts` → `QueryAuthEvents`）
+- [x] `auth-attempts` → `auth-attempt-stats`（重複 construct ID `QueryAuthAttempts` → `QueryAuthAttemptStats`）
+- [x] `README.md` 保存済みクエリ表を更新
+- [x] `aidlc-docs/audit.md` に追記
+- [x] `cdk synth` 正常確認

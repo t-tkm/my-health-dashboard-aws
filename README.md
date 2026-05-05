@@ -587,9 +587,12 @@ CDK デプロイ時に以下のクエリが自動登録されます。マネジ�
 
 | クエリ名 | 対象ロググループ | 内容 |
 |---|---|---|
-| `health-dashboard/api-access-summary` | API Gateway | HTTP リクエスト一覧（メソッド・パス・ステータス・レスポンスサイズ・IP） |
-| `health-dashboard/lambda-access-log` | 全 Lambda | アクセスログ一覧（`type = "access"` のみ） |
+| `health-dashboard/api-access` | API Gateway | HTTP リクエスト一覧（メソッド・パス・ステータス・レスポンスサイズ・IP） |
+| `health-dashboard/lambda-access` | 全 Lambda | アクセスログ一覧（`type = "access"` のみ） |
 | `health-dashboard/lambda-errors` | 全 Lambda | エラーログ一覧（`type = "error"` のみ） |
-| `health-dashboard/auth-all-attempts` | PreAuth + PostAuth | 全認証イベント（試行・成功の両方） |
-| `health-dashboard/auth-failures` | PreAuth + PostAuth | ログイン試行の集計（5 分窓、username × 試行回数）。成功直前の試行も含む |
+| `health-dashboard/auth-events` | PreAuth + PostAuth | 全認証イベント（試行・成功の両方） |
+| `health-dashboard/auth-attempt-stats` | PreAuth + PostAuth | ログイン試行の集計（5 分窓、username × 試行回数）。成功直前の試行も含む |
 | `health-dashboard/auth-successes` | PostAuth | ログイン成功のみ |
+
+> **5 分窓（`bin(5m)`）について**  
+> ログイベントを 5 分単位の時間枠でグループ化します。例えば 00:00〜00:05 の間に発生した 6 回の試行は、`bin = 00:00:00` の 1 行に `events = 6` としてまとめて表示されます。短時間に大量の試行が集中する brute force 攻撃の検知に適しています。

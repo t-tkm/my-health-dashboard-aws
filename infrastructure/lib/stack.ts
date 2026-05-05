@@ -259,7 +259,7 @@ export class HealthDashboardStack extends cdk.Stack {
 
     // ------------------------------------------------------------------ CloudWatch Logs Insights saved queries
     new logs.QueryDefinition(this, 'QueryApiAccess', {
-      queryDefinitionName: 'health-dashboard/api-access-summary',
+      queryDefinitionName: 'health-dashboard/api-access',
       logGroups: [apiAccessLogGroup],
       queryString: new logs.QueryString({
         fields: ['@timestamp', 'httpMethod', 'resourcePath', 'status', 'responseLength', 'ip'],
@@ -270,7 +270,7 @@ export class HealthDashboardStack extends cdk.Stack {
     });
 
     new logs.QueryDefinition(this, 'QueryLambdaAccess', {
-      queryDefinitionName: 'health-dashboard/lambda-access-log',
+      queryDefinitionName: 'health-dashboard/lambda-access',
       logGroups: lambdaNames.map((_, i) =>
         logs.LogGroup.fromLogGroupName(this, `LgRef-${i}`, `/aws/lambda/health-dashboard-${lambdaNames[i]}`),
       ),
@@ -300,8 +300,8 @@ export class HealthDashboardStack extends cdk.Stack {
       logs.LogGroup.fromLogGroupName(this, 'LgAuthPost', '/aws/lambda/health-dashboard-postauth'),
     ];
 
-    new logs.QueryDefinition(this, 'QueryAuthAttempts', {
-      queryDefinitionName: 'health-dashboard/auth-all-attempts',
+    new logs.QueryDefinition(this, 'QueryAuthEvents', {
+      queryDefinitionName: 'health-dashboard/auth-events',
       logGroups: authLogGroups,
       queryString: new logs.QueryString({
         fields: ['@timestamp', 'type', 'username', 'userId', 'email', 'newDeviceUsed'],
@@ -310,8 +310,8 @@ export class HealthDashboardStack extends cdk.Stack {
       }),
     });
 
-    new logs.CfnQueryDefinition(this, 'QueryAuthFailures', {
-      name: 'health-dashboard/auth-failures',
+    new logs.CfnQueryDefinition(this, 'QueryAuthAttemptStats', {
+      name: 'health-dashboard/auth-attempt-stats',
       logGroupNames: [
         '/aws/lambda/health-dashboard-preauth',
         '/aws/lambda/health-dashboard-postauth',

@@ -37,4 +37,4 @@ dummy_health_data.csv
 .kiro/local-settings.json
 
 # Others
-command.txt
+env.sh

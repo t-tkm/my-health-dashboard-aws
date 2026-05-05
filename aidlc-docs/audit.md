@@ -1,5 +1,27 @@
 # AI-DLC Audit Log
 
+## Rename: health-dashboard 全クエリ名見直し（#fix/auth-failures-query）
+**Timestamp**: 2026-05-05T03:00:00Z
+**User Input**: "health-dashboard全体見直し。重複などないか？命名はユーザに誤解を与えないか？" → "yes"
+**AI Response**: 6 クエリを以下の通りリネーム。重複 CDK construct ID `QueryAuthAttempts` を修正（`QueryAuthEvents` / `QueryAuthAttemptStats` に分離）。README 保存済みクエリ表も更新。cdk synth 正常完了。
+- `api-access-summary` → `api-access`
+- `lambda-access-log` → `lambda-access`
+- `lambda-errors` → 変更なし
+- `auth-all-attempts` → `auth-events`（construct ID: `QueryAuthAttempts` → `QueryAuthEvents`）
+- `auth-attempts` → `auth-attempt-stats`（construct ID: 重複 `QueryAuthAttempts` → `QueryAuthAttemptStats`）
+- `auth-successes` → 変更なし
+**Context**: リネーム — infrastructure/lib/stack.ts, README.md
+
+---
+
+## Rename: auth-failures → auth-attempts（#13）
+**Timestamp**: 2026-05-05T02:00:00Z
+**User Input**: "auth-attemptsで"
+**AI Response**: クエリ名 `health-dashboard/auth-failures` → `health-dashboard/auth-attempts` に変更。CDK 構築 ID も `QueryAuthFailures` → `QueryAuthAttempts` に更新。README 更新。
+**Context**: リネーム — infrastructure/lib/stack.ts, README.md
+
+---
+
 ## Fix: auth-failures クエリを動作する実装に修正（#13）
 **Timestamp**: 2026-05-05T01:30:00Z
 **User Input**: "A"
