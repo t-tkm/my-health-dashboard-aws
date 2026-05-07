@@ -164,7 +164,7 @@ function Dashboard() {
           label="平均摂取カロリー"
           value={`${filtered.avg_cal} kcal`}
           color="#42b72a"
-          sub={<span className="text-muted">目標: {data.cal_target} kcal</span>}
+          sub={<span className="text-muted">目標: {data.cal_target[data.cal_target.length - 1] ?? 0} kcal</span>}
         />
         <StatCard
           label="表示期間"
@@ -214,39 +214,39 @@ function Dashboard() {
 
       <div className="chart-card">
         <div className="chart-title">カロリー</div>
-        <NutrientChart dates={filtered.dates} values={filtered.calories} target={data.cal_target} unit="kcal" height={h.cal} xInterval={xi} />
+        <NutrientChart dates={filtered.dates} values={filtered.calories} target={filtered.cal_target} unit="kcal" height={h.cal} xInterval={xi} />
       </div>
 
       <div className="chart-grid-2">
         <div className="chart-card">
           <div className="chart-title">タンパク質</div>
-          <NutrientChart dates={filtered.dates} values={filtered.protein_gram} target={data.protein_target} unit="g" height={h.nutrient} xInterval={xi} />
+          <NutrientChart dates={filtered.dates} values={filtered.protein_gram} target={filtered.protein_target} unit="g" height={h.nutrient} xInterval={xi} />
         </div>
         <div className="chart-card">
           <div className="chart-title">脂質</div>
-          <NutrientChart dates={filtered.dates} values={filtered.fat_gram} target={data.fat_target} unit="g" height={h.nutrient} xInterval={xi} />
+          <NutrientChart dates={filtered.dates} values={filtered.fat_gram} target={filtered.fat_target} unit="g" height={h.nutrient} xInterval={xi} />
         </div>
       </div>
 
       <div className="chart-grid-2">
         <div className="chart-card">
           <div className="chart-title">炭水化物</div>
-          <NutrientChart dates={filtered.dates} values={filtered.carb_gram} target={data.carb_target} unit="g" height={h.nutrient} xInterval={xi} />
+          <NutrientChart dates={filtered.dates} values={filtered.carb_gram} target={filtered.carb_target} unit="g" height={h.nutrient} xInterval={xi} />
         </div>
         <div className="chart-card">
           <div className="chart-title">糖質</div>
-          <NutrientChart dates={filtered.dates} values={filtered.sugar_gram} target={data.sugar_target} unit="g" height={h.nutrient} xInterval={xi} />
+          <NutrientChart dates={filtered.dates} values={filtered.sugar_gram} target={filtered.sugar_target} unit="g" height={h.nutrient} xInterval={xi} />
         </div>
       </div>
 
       <div className="chart-grid-2">
         <div className="chart-card">
           <div className="chart-title">食物繊維</div>
-          <NutrientChart dates={filtered.dates} values={filtered.fiber_gram} target={data.fiber_target} unit="g" height={h.nutrient} xInterval={xi} />
+          <NutrientChart dates={filtered.dates} values={filtered.fiber_gram} target={filtered.fiber_target} unit="g" height={h.nutrient} xInterval={xi} />
         </div>
         <div className="chart-card">
           <div className="chart-title">塩分</div>
-          <NutrientChart dates={filtered.dates} values={filtered.salt_gram} target={data.salt_target} unit="g" height={h.nutrient} xInterval={xi} />
+          <NutrientChart dates={filtered.dates} values={filtered.salt_gram} target={filtered.salt_target} unit="g" height={h.nutrient} xInterval={xi} />
         </div>
       </div>
     </div>
