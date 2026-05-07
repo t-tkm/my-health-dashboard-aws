@@ -115,18 +115,6 @@ def compute(items: list[dict]) -> dict:
     if df.empty:
         return {'error': 'no_data'}
 
-    def last_val(col: str) -> float:
-        vals = df[col].dropna() if col in df.columns else pd.Series(dtype=float)
-        return round(float(vals.iloc[-1]), 1) if len(vals) > 0 else 0
-
-    cal_target     = last_val('cal_target')
-    protein_target = last_val('protein_target')
-    fat_target     = last_val('fat_target')
-    carb_target    = last_val('carb_target')
-    sugar_target   = last_val('sugar_target')
-    fiber_target   = last_val('fiber_target')
-    salt_target    = last_val('salt_target')
-
     # 体脂肪率SMAはfillna(0)の前に計算（欠損日を0として扱わないため）
     bf_series = df['body_fat_percent'] if 'body_fat_percent' in df.columns else pd.Series(
         [np.nan] * len(df), index=df.index)
@@ -136,6 +124,8 @@ def compute(items: list[dict]) -> dict:
     df['weight'] = pd.to_numeric(df['weight'], errors='coerce')
     raw_weight_series = df['weight'].copy()  # NaN where no data recorded
     df['weight'] = df['weight'].interpolate(method='linear')
+    for t in _TARGET_FIELDS:
+        df[t] = df[t].ffill()
     df = df.fillna(0)
 
     calories = df['calories'].tolist()
@@ -187,13 +177,13 @@ def compute(items: list[dict]) -> dict:
         'sugar_gram':     df['sugar_g'].round(1).tolist(),
         'fiber_gram':     df['fiber_g'].round(1).tolist(),
         'salt_gram':      df['salt_g'].round(1).tolist(),
-        'cal_target':     cal_target,
-        'protein_target': protein_target,
-        'fat_target':     fat_target,
-        'carb_target':    carb_target,
-        'sugar_target':   sugar_target,
-        'fiber_target':   fiber_target,
-        'salt_target':    salt_target,
+        'cal_target':     df['cal_target'].round(1).tolist(),
+        'protein_target': df['protein_target'].round(1).tolist(),
+        'fat_target':     df['fat_target'].round(1).tolist(),
+        'carb_target':    df['carb_target'].round(1).tolist(),
+        'sugar_target':   df['sugar_target'].round(1).tolist(),
+        'fiber_target':   df['fiber_target'].round(1).tolist(),
+        'salt_target':    df['salt_target'].round(1).tolist(),
         'current_weight':  actual_weights[-1] if actual_weights else float(round(sma7[-1], 1)),
         'sma7_start':      float(round(sma7[0], 1)),
         'sma7_end':        float(round(sma7[-1], 1)),

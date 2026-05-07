@@ -8,7 +8,7 @@ import { formatTick } from '../utils/dateFormat';
 interface Props {
   dates: string[];
   values: number[];
-  target: number;
+  target: number[];
   unit: string;
   height?: number;
   xInterval?: number;
@@ -16,7 +16,7 @@ interface Props {
 
 const NutrientChart = memo(function NutrientChart({ dates, values, target, unit, height = 280, xInterval = 7 }: Props) {
   const chartData = useMemo(
-    () => dates.map((d, i) => ({ date: d, value: values[i], target })),
+    () => dates.map((d, i) => ({ date: d, value: values[i], target: target[i] ?? 0 })),
     [dates, values, target],
   );
 
