@@ -1,6 +1,6 @@
 import { memo, useMemo } from 'react';
 import {
-  ComposedChart, Bar, Line, XAxis, YAxis, Tooltip, Legend,
+  ComposedChart, Bar, Cell, Line, XAxis, YAxis, Tooltip, Legend,
   CartesianGrid, ResponsiveContainer,
 } from 'recharts';
 import { formatTick } from '../utils/dateFormat';
@@ -39,7 +39,11 @@ const NutrientChart = memo(function NutrientChart({ dates, values, target, unit,
           radius={dense ? [0, 0, 0, 0] : [2, 2, 0, 0]}
           opacity={dense ? 0.6 : 1}
           maxBarSize={dense ? 6 : 24}
-        />
+        >
+          {chartData.map((entry, i) => (
+            <Cell key={i} fill={entry.target > 0 && entry.value > entry.target ? '#ef5350' : '#1877f2'} />
+          ))}
+        </Bar>
         <Line dataKey="target" name={`目安 (${unit})`} stroke="#ef5350" strokeWidth={2} strokeDasharray="6 3" dot={false} />
       </ComposedChart>
     </ResponsiveContainer>
