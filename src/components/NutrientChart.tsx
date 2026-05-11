@@ -12,9 +12,10 @@ interface Props {
   unit: string;
   height?: number;
   xInterval?: number;
+  redWhen?: 'above' | 'below';
 }
 
-const NutrientChart = memo(function NutrientChart({ dates, values, target, unit, height = 280, xInterval = 7 }: Props) {
+const NutrientChart = memo(function NutrientChart({ dates, values, target, unit, height = 280, xInterval = 7, redWhen = 'above' }: Props) {
   const chartData = useMemo(
     () => dates.map((d, i) => ({ date: d, value: values[i], target: target[i] ?? 0 })),
     [dates, values, target],
@@ -40,9 +41,12 @@ const NutrientChart = memo(function NutrientChart({ dates, values, target, unit,
           opacity={dense ? 0.6 : 1}
           maxBarSize={dense ? 6 : 24}
         >
-          {chartData.map((entry, i) => (
-            <Cell key={i} fill={entry.target > 0 && entry.value > entry.target ? '#ef5350' : '#1877f2'} />
-          ))}
+          {chartData.map((entry, i) => {
+            const isRed = entry.target > 0 && (
+              redWhen === 'above' ? entry.value > entry.target : entry.value < entry.target
+            );
+            return <Cell key={i} fill={isRed ? '#ef5350' : '#1877f2'} />;
+          })}
         </Bar>
         <Line dataKey="target" name={`目安 (${unit})`} stroke="#ef5350" strokeWidth={2} strokeDasharray="6 3" dot={false} />
       </ComposedChart>
