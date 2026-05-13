@@ -19,9 +19,10 @@ interface FormState {
   sugar_g: string;
   fiber_g: string;
   salt_g: string;
+  exercise: string;
 }
 
-const EMPTY_NUTRITION: Omit<FormState, 'date' | 'weight' | 'body_fat_percent'> = {
+const EMPTY_NUTRITION: Omit<FormState, 'date' | 'weight' | 'body_fat_percent' | 'exercise'> = {
   calories: '', protein_g: '', fat_g: '', carb_g: '', sugar_g: '', fiber_g: '', salt_g: '',
 };
 
@@ -34,7 +35,7 @@ function numStr(v: number | null | undefined): string {
 }
 
 function valuesForDate(data: HealthData | null, date: string): Omit<FormState, 'date'> {
-  const blank = { weight: '', body_fat_percent: '', ...EMPTY_NUTRITION };
+  const blank = { weight: '', body_fat_percent: '', ...EMPTY_NUTRITION, exercise: '' };
   if (!data) return blank;
   const idx = data.dates.indexOf(date);
   if (idx === -1) return blank;
@@ -49,6 +50,7 @@ function valuesForDate(data: HealthData | null, date: string): Omit<FormState, '
     sugar_g:          numStr(data.sugar_gram[idx]),
     fiber_g:          numStr(data.fiber_gram[idx]),
     salt_g:           numStr(data.salt_gram[idx]),
+    exercise:         data.exercises[idx] ?? '',
   };
 }
 
@@ -88,6 +90,12 @@ export default function EntryForm({ data, onClose, onSaved }: Props) {
     const bf = parseField(form.body_fat_percent, hasExisting);
     if (bf !== undefined) body.body_fat_percent = bf;
 
+    if (form.exercise !== '') {
+      body.exercise = form.exercise;
+    } else if (hasExisting) {
+      body.exercise = null;
+    }
+
     const nutritionKeys = ['calories', 'protein_g', 'fat_g', 'carb_g', 'sugar_g', 'fiber_g', 'salt_g'] as const;
     for (const k of nutritionKeys) {
       const v = parseField(form[k], hasExisting);
@@ -96,6 +104,7 @@ export default function EntryForm({ data, onClose, onSaved }: Props) {
 
     const allEmpty = body.weight == null
       && body.body_fat_percent == null
+      && typeof body.exercise !== 'string'
       && nutritionKeys.every(k => !(k in body) || body[k] == null);
 
     if (allEmpty && !hasExisting) {
@@ -172,6 +181,19 @@ export default function EntryForm({ data, onClose, onSaved }: Props) {
               <label>体脂肪率 (%)</label>
               <input type="number" step="0.1" placeholder="例: 20.5"
                 value={form.body_fat_percent} onChange={e => set('body_fat_percent', e.target.value)} />
+            </div>
+          </div>
+
+          <div className="form-section-label">運動 <span className="form-optional">省略可</span></div>
+          <div className="form-row">
+            <div className="form-group">
+              <label>実施した運動</label>
+              <select value={form.exercise} onChange={e => set('exercise', e.target.value)}>
+                <option value="">なし</option>
+                <option value="g">ジム</option>
+                <option value="h">HIIT</option>
+                <option value="gh">ジム＋HIIT</option>
+              </select>
             </div>
           </div>
 

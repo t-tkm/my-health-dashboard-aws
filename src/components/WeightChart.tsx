@@ -12,16 +12,47 @@ interface Props {
   xInterval?: number;
 }
 
+const EXERCISE_COLOR: Record<string, string> = {
+  g:  '#1877f2',
+  h:  '#42b72a',
+  gh: '#f5a623',
+};
+
+const EXERCISE_LABEL: Record<string, string> = {
+  g:  'ジム',
+  h:  'HIIT',
+  gh: 'ジム+HIIT',
+};
+
+function ExerciseDot(props: { cx?: number; cy?: number; payload?: { exercise?: string | null }; value?: number }) {
+  const { cx, cy, payload, value } = props;
+  if (!payload?.exercise || value == null || cx == null || cy == null) return null;
+  const color = EXERCISE_COLOR[payload.exercise];
+  if (!color) return null;
+  return <circle cx={cx} cy={cy} r={6} fill={color} stroke="#fff" strokeWidth={1.5} />;
+}
+
 const WeightChart = memo(function WeightChart({ data, height = 350, xInterval = 7 }: Props) {
   const chartData = useMemo(
-    () => data.dates.map((d, i) => ({ date: d, weight: data.weights[i], sma7: data.sma7[i] })),
-    [data.dates, data.weights, data.sma7],
+    () => data.dates.map((d, i) => ({
+      date: d,
+      weight: data.weights[i],
+      sma7: data.sma7[i],
+      exercise: data.exercises[i] ?? null,
+    })),
+    [data.dates, data.weights, data.sma7, data.exercises],
   );
 
   const n          = data.dates.length;
   const showBrush  = n > 90;
   const yearStarts = useMemo(() => getYearStarts(data.dates), [data.dates]);
   const fmt = (dateStr: string) => formatTick(dateStr, n);
+
+  const exercisePayloads = useMemo(() => {
+    const seen = new Set<string>();
+    data.exercises.forEach(e => { if (e && EXERCISE_COLOR[e]) seen.add(e); });
+    return [...seen].map(e => ({ value: EXERCISE_LABEL[e] ?? e, type: 'circle' as const, color: EXERCISE_COLOR[e] }));
+  }, [data.exercises]);
 
   return (
     <ResponsiveContainer width="100%" height={height}>
@@ -37,8 +68,19 @@ const WeightChart = memo(function WeightChart({ data, height = 350, xInterval = 
           tickFormatter={fmt}
         />
         <YAxis domain={[data.weight_min, data.weight_max]} tickFormatter={v => `${v}kg`} tick={{ fontSize: 11 }} width={52} />
-        <Tooltip formatter={(v: number, name: string) => [`${v} kg`, name]} labelFormatter={fmt} />
-        <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 4 }} />
+        <Tooltip
+          formatter={(v: number, name: string) => [`${v} kg`, name]}
+          labelFormatter={fmt}
+        />
+        <Legend
+          verticalAlign="top"
+          wrapperStyle={{ paddingBottom: 4 }}
+          payload={[
+            { value: '体重',  type: 'line',   color: '#1877f2' },
+            { value: '7日SMA', type: 'line',  color: '#ff7043' },
+            ...exercisePayloads,
+          ]}
+        />
 
         {yearStarts.map(d => (
           <ReferenceLine
@@ -50,7 +92,15 @@ const WeightChart = memo(function WeightChart({ data, height = 350, xInterval = 
           />
         ))}
 
-        <Line type="monotone" dataKey="weight" name="体重" stroke="#1877f2" strokeWidth={2} dot={n > 90 ? false : { r: 3 }} activeDot={{ r: 5 }} />
+        <Line
+          type="monotone"
+          dataKey="weight"
+          name="体重"
+          stroke="#1877f2"
+          strokeWidth={2}
+          dot={<ExerciseDot />}
+          activeDot={{ r: 5 }}
+        />
         <Line type="monotone" dataKey="sma7" name="7日SMA" stroke="#ff7043" strokeWidth={2} strokeDasharray="5 5" dot={false} />
 
         {showBrush && (

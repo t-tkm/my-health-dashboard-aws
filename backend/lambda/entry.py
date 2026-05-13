@@ -42,24 +42,31 @@ def handler(event, context):
                        'sugar_target', 'fiber_target', 'salt_target')
         targets = {k: body[k] for k in target_keys if k in body} or None
 
+        # exercise: 文字列（"g"/"h"/"gh"）または null（クリア）
+        exercise = body.get('exercise', ...)  # ... = キーなし（変更しない）
+        exercise_val = None if exercise is ... else exercise  # None = クリア, 文字列 = 設定
+
         # Fields explicitly set to null mean "clear this field"
         clear_fields = set()
         if 'weight' in body and body['weight'] is None:
             clear_fields.add('weight')
         if 'body_fat_percent' in body and body['body_fat_percent'] is None:
             clear_fields.add('body_fat_percent')
+        if 'exercise' in body and body['exercise'] is None:
+            clear_fields.add('exercise')
         for k in nutrition_keys:
             if k in body and body[k] is None:
                 clear_fields.add(k)
 
         nutrition = {k: body[k] for k in nutrition_keys if k in body and body[k] is not None} or None
 
-        data_fields = ['weight', 'body_fat_percent'] + list(nutrition_keys)
+        data_fields = ['weight', 'body_fat_percent', 'exercise'] + list(nutrition_keys)
         if not any(k in body for k in data_fields):
             return err(400, '体重か体脂肪率か栄養素のいずれかを入力してください', origin)
 
         put_entry(user_id, date, weight=weight, body_fat_percent=body_fat_percent,
-                  nutrition=nutrition, targets=targets, clear_fields=clear_fields)
+                  nutrition=nutrition, targets=targets, clear_fields=clear_fields,
+                  exercise=exercise_val)
         items = load_items(user_id)
         return ok(compute(items), origin)
 
