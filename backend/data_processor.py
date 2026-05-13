@@ -92,6 +92,8 @@ def _items_to_df(items: list[dict]) -> pd.DataFrame:
             df[col] = pd.to_numeric(df[col], errors='coerce')
         else:
             df[col] = np.nan
+    if 'exercise' not in df.columns:
+        df['exercise'] = None
     return df
 
 
@@ -156,6 +158,8 @@ def compute(items: list[dict]) -> dict:
     body_fat_diff          = (round(sma7_bf_start - sma7_bf_end, 1)
                               if sma7_bf_start is not None and sma7_bf_end is not None else None)
 
+    exercises = [v if isinstance(v, str) else None for v in df['exercise'].tolist()]
+
     return {
         'dates':                  df['date'].tolist(),
         'weights':                raw_weights,
@@ -194,12 +198,13 @@ def compute(items: list[dict]) -> dict:
         'record_days':     int(len(df)),
         'weight_min':      float(round(min(actual_weights) - 1, 1)) if actual_weights else 0.0,
         'weight_max':      float(round(max(actual_weights) + 1, 1)) if actual_weights else 100.0,
+        'exercises':       exercises,
     }
 
 
 def put_entry(user_id: str, date: str, weight=None, body_fat_percent=None,
               nutrition: dict | None = None, targets: dict | None = None,
-              clear_fields: set | None = None) -> None:
+              clear_fields: set | None = None, exercise=None) -> None:
     """1日分を追加/更新する。存在しない日は前日のターゲット値を引き継ぐ。"""
     clear_fields = clear_fields or set()
     table = _get_table()
@@ -210,6 +215,12 @@ def put_entry(user_id: str, date: str, weight=None, body_fat_percent=None,
     last_item = items[-1] if items else {}
 
     item: dict = {'userId': user_id, 'date': date}
+
+    # exercise は文字列なので数値変換せずそのまま保存
+    if exercise is not None:
+        item['exercise'] = exercise
+    elif 'exercise' not in clear_fields and 'exercise' in existing:
+        item['exercise'] = existing['exercise']
 
     for field in ['weight', 'body_fat_percent'] + list(_NUTRITION_MAP.keys()):
         db_key = field
@@ -243,7 +254,7 @@ def delete_entry(user_id: str, date: str) -> None:
 
 def items_to_csv(items: list[dict]) -> str:
     """DynamoDB items → CSV 文字列（UTF-8 BOM付き）"""
-    fieldnames = ['date', 'weight', 'body_fat_percent', 'calories', 'protein_g', 'fat_g', 'carb_g',
+    fieldnames = ['date', 'weight', 'body_fat_percent', 'exercise', 'calories', 'protein_g', 'fat_g', 'carb_g',
                   'sugar_g', 'fiber_g', 'salt_g'] + _TARGET_FIELDS
     buf = io.StringIO()
     buf.write('﻿')  # UTF-8 BOM (Excel 用)
@@ -278,5 +289,9 @@ def import_csv_to_dynamo(user_id: str, file_storage) -> int:
                 val = row.get(col)
                 if pd.notna(val):
                     item[col] = _to_decimal(val)
+            if 'exercise' in df.columns:
+                val = row.get('exercise')
+                if pd.notna(val) and str(val).strip():
+                    item['exercise'] = str(val).strip()
             batch.put_item(Item=item)
     return len(df)

@@ -59,6 +59,7 @@ export function filterData(data: HealthData, days: RangeDays): HealthData {
     sugar_target:   daily(data.sugar_target),
     fiber_target:   daily(data.fiber_target),
     salt_target:    daily(data.salt_target),
+    exercises:      daily(data.exercises),
     weight_min:   (() => { const v = fW.filter((w): w is number => w !== null); return v.length > 0 ? Math.round((Math.min(...v) - 1) * 10) / 10 : data.weight_min; })(),
     weight_max:   (() => { const v = fW.filter((w): w is number => w !== null); return v.length > 0 ? Math.round((Math.max(...v) + 1) * 10) / 10 : data.weight_max; })(),
     sma7_start:      Math.round(sma7Start * 10) / 10,

@@ -36,4 +36,5 @@ export interface HealthData {
   record_days: number;
   weight_min: number;
   weight_max: number;
+  exercises: (string | null)[];
 }
