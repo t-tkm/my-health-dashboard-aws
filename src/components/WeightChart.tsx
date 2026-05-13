@@ -4,7 +4,7 @@ import {
   CartesianGrid, ResponsiveContainer, Brush, ReferenceLine,
 } from 'recharts';
 import { HealthData } from '../types';
-import { formatTick, getYearStarts } from '../utils/dateFormat';
+import { formatTick, formatTickWithDow, getYearStarts } from '../utils/dateFormat';
 
 interface Props {
   data: HealthData;
@@ -70,7 +70,7 @@ const WeightChart = memo(function WeightChart({ data, height = 350, xInterval = 
         <YAxis domain={[data.weight_min, data.weight_max]} tickFormatter={v => `${v}kg`} tick={{ fontSize: 11 }} width={52} />
         <Tooltip
           formatter={(v: number, name: string) => [`${v} kg`, name]}
-          labelFormatter={fmt}
+          labelFormatter={formatTickWithDow}
         />
         <Legend
           verticalAlign="top"
