@@ -4,6 +4,7 @@ import csv
 import numpy as np
 import pandas as pd
 import boto3
+from datetime import datetime
 from boto3.dynamodb.conditions import Key
 from decimal import Decimal
 
@@ -254,14 +255,16 @@ def delete_entry(user_id: str, date: str) -> None:
 
 def items_to_csv(items: list[dict]) -> str:
     """DynamoDB items → CSV 文字列（UTF-8 BOM付き）"""
-    fieldnames = ['date', 'weight', 'body_fat_percent', 'exercise', 'calories', 'protein_g', 'fat_g', 'carb_g',
-                  'sugar_g', 'fiber_g', 'salt_g'] + _TARGET_FIELDS
+    fieldnames = ['date', 'day_of_week', 'weight', 'body_fat_percent', 'exercise', 'calories',
+                  'protein_g', 'fat_g', 'carb_g', 'sugar_g', 'fiber_g', 'salt_g'] + _TARGET_FIELDS
     buf = io.StringIO()
     buf.write('﻿')  # UTF-8 BOM (Excel 用)
     writer = csv.DictWriter(buf, fieldnames=fieldnames, extrasaction='ignore')
     writer.writeheader()
     for item in sorted(items, key=lambda x: x['date']):
-        writer.writerow({k: item.get(k, '') for k in fieldnames})
+        row = {k: item.get(k, '') for k in fieldnames}
+        row['day_of_week'] = datetime.strptime(item['date'], '%Y-%m-%d').strftime('%a')
+        writer.writerow(row)
     return buf.getvalue()
 
 
