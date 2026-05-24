@@ -2,13 +2,9 @@ import { useState } from 'react';
 import { apiFetch } from '../hooks/useHealthData';
 
 const LOG_TYPES: { value: string; label: string }[] = [
-  { value: 'api-gateway',       label: 'API Gateway アクセスログ' },
-  { value: 'lambda-data',       label: 'Lambda: データ取得' },
-  { value: 'lambda-entry',      label: 'Lambda: エントリ登録/削除' },
-  { value: 'lambda-export',     label: 'Lambda: CSVエクスポート' },
-  { value: 'lambda-importcsv',  label: 'Lambda: CSVインポート' },
-  { value: 'lambda-preauth',    label: 'Lambda: 認証前トリガー' },
-  { value: 'lambda-postauth',   label: 'Lambda: 認証後トリガー' },
+  { value: 'api-gateway',     label: 'API Gateway アクセスログ' },
+  { value: 'lambda-preauth',  label: '認証ログ（失敗）' },
+  { value: 'lambda-postauth', label: '認証ログ（成功）' },
 ];
 
 function today(): string {

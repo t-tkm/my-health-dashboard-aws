@@ -275,11 +275,12 @@ export class HealthDashboardStack extends cdk.Stack {
     );
 
     // ------------------------------------------------------------------ CloudWatch Logs subscription filters → S3 (via log_shipper Lambda)
+    // 転送対象: API GW アクセスログ + 認証前後トリガーの3グループのみ
     const logShipDest = new logsdest.LambdaDestination(fnLogShipper);
-    const lambdaShipLogGroups = lambdaNames.map((name, i) =>
+    const authShipLogGroups = ['preauth', 'postauth'].map((name, i) =>
       logs.LogGroup.fromLogGroupName(this, `LgShip-${i}`, `/aws/lambda/health-dashboard-${name}`),
     );
-    ([apiAccessLogGroup, ...lambdaShipLogGroups] as logs.ILogGroup[]).forEach((lg, i) => {
+    ([apiAccessLogGroup, ...authShipLogGroups] as logs.ILogGroup[]).forEach((lg, i) => {
       new logs.SubscriptionFilter(this, `LogShipFilter-${i}`, {
         logGroup: lg,
         destination: logShipDest,

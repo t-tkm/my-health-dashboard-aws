@@ -6,12 +6,8 @@ BUCKET = os.environ['LOG_BUCKET']
 
 LOG_GROUP_MAP = {
     '/aws/apigateway/health-dashboard-access': 'api-gateway',
-    '/aws/lambda/health-dashboard-data': 'lambda-data',
-    '/aws/lambda/health-dashboard-entry': 'lambda-entry',
-    '/aws/lambda/health-dashboard-export': 'lambda-export',
-    '/aws/lambda/health-dashboard-importcsv': 'lambda-importcsv',
-    '/aws/lambda/health-dashboard-preauth': 'lambda-preauth',
-    '/aws/lambda/health-dashboard-postauth': 'lambda-postauth',
+    '/aws/lambda/health-dashboard-preauth':    'lambda-preauth',
+    '/aws/lambda/health-dashboard-postauth':   'lambda-postauth',
 }
 
 
