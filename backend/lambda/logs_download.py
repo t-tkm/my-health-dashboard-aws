@@ -8,10 +8,7 @@ from common import ok, err, get_user_id, get_origin, cors_headers, log_handler
 s3 = boto3.client('s3')
 BUCKET = os.environ['LOG_BUCKET']
 
-VALID_TYPES = {
-    'api-gateway', 'lambda-data', 'lambda-entry', 'lambda-export',
-    'lambda-importcsv', 'lambda-preauth', 'lambda-postauth',
-}
+VALID_TYPES = {'api-gateway', 'lambda-preauth', 'lambda-postauth'}
 
 
 @log_handler
