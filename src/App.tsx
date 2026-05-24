@@ -10,6 +10,7 @@ import SlopeChart from './components/SlopeChart';
 import NutrientChart from './components/NutrientChart';
 import EmptyState from './components/EmptyState';
 import EntryForm from './components/EntryForm';
+import LogDownload from './components/LogDownload';
 
 function useIsMobile(breakpoint = 600) {
   const [isMobile, setIsMobile] = useState(window.innerWidth < breakpoint);
@@ -117,6 +118,7 @@ function Dashboard() {
             {importing ? 'インポート中...' : 'CSVで更新する'}
             <input type="file" accept=".csv" hidden onChange={handleCsvImport} disabled={importing} />
           </label>
+          <LogDownload />
           <button className="btn" onClick={signOut} title={user?.signInDetails?.loginId}>ログアウト</button>
         </div>
       </header>

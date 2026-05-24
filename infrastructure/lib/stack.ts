@@ -5,6 +5,8 @@ import * as apigw from 'aws-cdk-lib/aws-apigateway';
 import * as cognito from 'aws-cdk-lib/aws-cognito';
 import * as amplify from 'aws-cdk-lib/aws-amplify';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as logsdest from 'aws-cdk-lib/aws-logs-destinations';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import * as path from 'path';
@@ -17,6 +19,13 @@ export class HealthDashboardStack extends cdk.Stack {
     if (!githubToken) {
       throw new Error('環境変数 GITHUB_TOKEN を設定してください（GitHub Personal Access Token）');
     }
+
+    // ------------------------------------------------------------------ S3 (log storage)
+    const logBucket = new s3.Bucket(this, 'LogBucket', {
+      bucketName: `health-dashboard-logs-${this.account}`,
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      lifecycleRules: [{ expiration: cdk.Duration.days(365) }],
+    });
 
     // ------------------------------------------------------------------ DynamoDB
     const table = new dynamodb.Table(this, 'HealthEntries', {
@@ -222,6 +231,14 @@ export class HealthDashboardStack extends cdk.Stack {
 
     [fnData, fnEntry, fnExport, fnImport].forEach(fn => table.grantReadWriteData(fn));
 
+    const fnLogShipper = makeFn('LogShipper', 'lambda/log_shipper.handler', 'CloudWatch Logs → S3');
+    logBucket.grantWrite(fnLogShipper);
+    fnLogShipper.addEnvironment('LOG_BUCKET', logBucket.bucketName);
+
+    const fnLogs = makeFn('Logs', 'lambda/logs_download.handler', 'GET /api/logs');
+    logBucket.grantRead(fnLogs);
+    fnLogs.addEnvironment('LOG_BUCKET', logBucket.bucketName);
+
     // ------------------------------------------------------------------ Cognito auth triggers
     const fnPreAuth  = makeFn('PreAuth',  'lambda/auth_pre.handler',  'Cognito Pre-Authentication: log login attempts');
     const fnPostAuth = makeFn('PostAuth', 'lambda/auth_post.handler', 'Cognito Post-Authentication: log login successes');
@@ -256,6 +273,19 @@ export class HealthDashboardStack extends cdk.Stack {
         retention: logs.RetentionDays.THREE_MONTHS,
       }),
     );
+
+    // ------------------------------------------------------------------ CloudWatch Logs subscription filters → S3 (via log_shipper Lambda)
+    const logShipDest = new logsdest.LambdaDestination(fnLogShipper);
+    const lambdaShipLogGroups = lambdaNames.map((name, i) =>
+      logs.LogGroup.fromLogGroupName(this, `LgShip-${i}`, `/aws/lambda/health-dashboard-${name}`),
+    );
+    ([apiAccessLogGroup, ...lambdaShipLogGroups] as logs.ILogGroup[]).forEach((lg, i) => {
+      new logs.SubscriptionFilter(this, `LogShipFilter-${i}`, {
+        logGroup: lg,
+        destination: logShipDest,
+        filterPattern: logs.FilterPattern.allEvents(),
+      });
+    });
 
     // ------------------------------------------------------------------ CloudWatch Logs Insights saved queries
     new logs.QueryDefinition(this, 'QueryApiAccess', {
@@ -380,6 +410,7 @@ export class HealthDashboardStack extends cdk.Stack {
 
     apiRoot.addResource('export').addMethod('GET',  new apigw.LambdaIntegration(fnExport), auth);
     apiRoot.addResource('import').addMethod('POST', new apigw.LambdaIntegration(fnImport), auth);
+    apiRoot.addResource('logs').addMethod('GET',   new apigw.LambdaIntegration(fnLogs),   auth);
 
     // Amplify 環境変数を CDK outputs から自動設定（循環依存を避けるため AmplifyApp → Api の一方向のみ）
     amplifyApp.environmentVariables = [
@@ -404,6 +435,7 @@ export class HealthDashboardStack extends cdk.Stack {
     new cdk.CfnOutput(this, 'CognitoDomain',    { value: cognitoDomainUrl,                exportName: 'CognitoDomain' });
     new cdk.CfnOutput(this, 'ApiAccessLogGroupName',  { value: apiAccessLogGroup.logGroupName,  description: 'API Gateway access log group' });
     new cdk.CfnOutput(this, 'LambdaLogGroupPrefix', { value: '/aws/lambda/health-dashboard-*', description: 'Lambda log group prefix (CloudWatch Logs)' });
+    new cdk.CfnOutput(this, 'LogBucketName', { value: logBucket.bucketName, description: 'S3 bucket for persistent log storage' });
     new cdk.CfnOutput(this, 'AmplifyAccessLogs', {
       value: `https://console.aws.amazon.com/amplify/home#/apps/${amplifyApp.attrAppId}/accesslogs`,
       description: 'Amplify access logs (download from Amplify console)',
