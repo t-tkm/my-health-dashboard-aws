@@ -300,32 +300,6 @@ export class HealthDashboardStack extends cdk.Stack {
       }),
     });
 
-    new logs.QueryDefinition(this, 'QueryLambdaAccess', {
-      queryDefinitionName: 'health-dashboard/lambda-access',
-      logGroups: lambdaNames.map((_, i) =>
-        logs.LogGroup.fromLogGroupName(this, `LgRef-${i}`, `/aws/lambda/health-dashboard-${lambdaNames[i]}`),
-      ),
-      queryString: new logs.QueryString({
-        fields: ['@timestamp', 'method', 'path', 'userId', 'status', 'durationMs'],
-        filterStatements: ['type = "access"'],
-        sort: '@timestamp desc',
-        limit: 200,
-      }),
-    });
-
-    new logs.QueryDefinition(this, 'QueryLambdaErrors', {
-      queryDefinitionName: 'health-dashboard/lambda-errors',
-      logGroups: lambdaNames.map((_, i) =>
-        logs.LogGroup.fromLogGroupName(this, `LgErrRef-${i}`, `/aws/lambda/health-dashboard-${lambdaNames[i]}`),
-      ),
-      queryString: new logs.QueryString({
-        fields: ['@timestamp', 'method', 'path', 'userId', 'error', 'durationMs'],
-        filterStatements: ['type = "error"'],
-        sort: '@timestamp desc',
-        limit: 100,
-      }),
-    });
-
     const authLogGroups = [
       logs.LogGroup.fromLogGroupName(this, 'LgAuthPre',  '/aws/lambda/health-dashboard-preauth'),
       logs.LogGroup.fromLogGroupName(this, 'LgAuthPost', '/aws/lambda/health-dashboard-postauth'),
