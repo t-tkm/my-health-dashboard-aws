@@ -242,7 +242,7 @@ function Dashboard() {
       <div className="chart-grid-2">
         <div className="chart-card">
           <div className="chart-title">食物繊維</div>
-          <NutrientChart dates={filtered.dates} values={filtered.fiber_gram} target={filtered.fiber_target} unit="g" height={h.nutrient} xInterval={xi} />
+          <NutrientChart dates={filtered.dates} values={filtered.fiber_gram} target={filtered.fiber_target} unit="g" height={h.nutrient} xInterval={xi} redWhen="below" />
         </div>
         <div className="chart-card">
           <div className="chart-title">塩分</div>
