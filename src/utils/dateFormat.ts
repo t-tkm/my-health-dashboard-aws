@@ -9,7 +9,7 @@ export function getDow(dateStr: string): string {
 export function formatTick(dateStr: string, totalCount: number): string {
   // 月次ラベルになる規模では年月を表示
   if (totalCount > 120) return dateStr.slice(0, 7).replace('-', '/'); // YYYY/MM
-  return dateStr.slice(5).replace('-', '/'); // MM/DD
+  return formatTickWithDow(dateStr); // MM/DD(Dow)
 }
 
 /** ツールチップ用: MM/DD(Dow) */
