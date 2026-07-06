@@ -147,6 +147,16 @@ aws sso login
 aws sts get-caller-identity
 ```
 
+`~/.zshrc` などグローバル設定を汚さずこのプロジェクトだけに閉じたい場合は、プロジェクト直下に `env.sh`（`.gitignore` 済み）を作り、ターミナルごとに `source env.sh` して読み込む。
+
+```bash
+# env.sh
+export AWS_PROFILE=root-admin
+export AWS_PAGER=
+```
+
+複数のターミナルアプリ（cmux / VS Code / Kiro のターミナルなど）から同じプロジェクトを触る場合も、それぞれで `source env.sh` すれば同じ設定になる。なお `aws sso login` 自体のトークンは `~/.aws/sso/cache/` にファイルとしてキャッシュされるため、シェルが違ってもログイン状態そのものは共有される。
+
 必要な権限の目安（管理者ロール推奨）：`dynamodb:*` / `lambda:*` / `apigateway:*` / `cognito-idp:*` / `iam:CreateRole` / `cloudformation:*` / `s3:*`
 
 #### 必須環境変数
