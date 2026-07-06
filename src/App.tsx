@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useAuthenticator, Authenticator } from '@aws-amplify/ui-react';
 import { useHealthData, apiFetch } from './hooks/useHealthData';
 import { filterData, xInterval, RangeDays } from './utils/filterData';
+import { nextCsvExportFilename } from './utils/exportFilename';
 import StatCard from './components/StatCard';
 import RangeFilter from './components/RangeFilter';
 import WeightChart from './components/WeightChart';
@@ -40,7 +41,7 @@ function Dashboard() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'health_data.csv';
+      a.download = nextCsvExportFilename();
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {

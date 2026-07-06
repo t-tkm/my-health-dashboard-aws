@@ -1,5 +1,21 @@
 # AI-DLC Audit Log
 
+## Code Generation — CSV エクスポートのファイル名に日付・連番付与（#36）
+**Timestamp**: 2026-07-07T00:10:00Z
+**User Input**: "localStorage (Recommended)"
+**AI Response**: 連番の永続化方式について localStorage 案でユーザー承認。`src/utils/exportFilename.ts` を新規追加し、`nextCsvExportFilename()` が `YYYYMMDD_health_data.csv` 形式のファイル名を生成。同日内の再エクスポート時は localStorage（キー: `csvExportHistory`）に保存した日付・回数を参照し `_1`, `_2`... を付与。`src/App.tsx` の `handleCsvExport` から利用するよう変更。`npm run build` で型チェック・ビルド成功を確認し、連番ロジックは Node スクリプトでのモック検証（`20260618_health_data.csv` → `_1` → `_2`）で仕様通りの出力を確認。
+**Context**: Code Generation — フロントエンドのみの変更、インフラ変更なし。ブランチ `feat/csv-export-date-filename`
+
+---
+
+## Requirements Analysis — CSV エクスポートのファイル名に日付・連番付与（#36）
+**Timestamp**: 2026-07-07T00:00:00Z
+**User Input**: "#36を対応。pr作成まで。"
+**AI Response**: GitHub Issue #36 の内容（`health_data.csv` → `20260618_health_data.csv` 形式、同日再エクスポート時は `_1`, `_2`... を連番付与、ブラウザの自動リネームに依存せずエクスポート処理側で制御）を確認。要件は明確なため minimal depth で対応。実装計画（`src/utils/exportFilename.ts` 新規追加、`App.tsx` 修正、ブランチ作成、ビルド確認、PR作成）をチャットで提示し承認を得た上で、連番の永続化方式（localStorage）について確認質問を実施。
+**Context**: Requirements Analysis — 小規模・単一コンポーネント内の変更のため User Stories / Application Design / Units Generation は SKIP（#13 と同様の軽量パス）
+
+---
+
 ## Rename: health-dashboard 全クエリ名見直し（#fix/auth-failures-query）
 **Timestamp**: 2026-05-05T03:00:00Z
 **User Input**: "health-dashboard全体見直し。重複などないか？命名はユーザに誤解を与えないか？" → "yes"
