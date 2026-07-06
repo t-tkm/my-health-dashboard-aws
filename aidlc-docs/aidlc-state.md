@@ -2,7 +2,7 @@
 
 **Project**: my-health-dashboard-aws
 **Project Type**: Brownfield
-**Last Updated**: 2026-04-26T10:30:00Z
+**Last Updated**: 2026-07-07T00:00:00Z
 
 ## Stage Progress
 
@@ -30,6 +30,14 @@
 - [ ] Infrastructure Design — SKIP (既存 CloudWatch Logs Insights クエリの修正のみ)
 - [x] Code Generation — Completed 2026-05-05 (CfnQueryDefinition + 集計ベースクエリに変更)
 - [x] Build and Test — cdk synth コンパイル確認済み 2026-05-05
+
+### 🟢 CONSTRUCTION PHASE — CSV エクスポートのファイル名に日付・連番付与 (#36)
+- [ ] Functional Design — SKIP (既存コンポーネント内のファイル名生成ロジックのみ)
+- [ ] NFR Requirements — SKIP
+- [ ] NFR Design — SKIP
+- [ ] Infrastructure Design — SKIP (フロントエンドのみ、インフラ変更なし)
+- [x] Code Generation — Completed 2026-07-07 (`src/utils/exportFilename.ts` 新規追加、`App.tsx` の `handleCsvExport` から利用。localStorage で同日連番を管理)
+- [x] Build and Test — `npm run build` (tsc + vite build) 成功確認 2026-07-07。連番ロジックは Node スクリプトでモック検証済み
 
 ### 🟡 OPERATIONS PHASE
 - [ ] Operations — PLACEHOLDER
