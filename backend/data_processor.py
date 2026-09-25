@@ -129,6 +129,9 @@ def compute(items: list[dict]) -> dict:
     df['weight'] = df['weight'].interpolate(method='linear')
     for t in _TARGET_FIELDS:
         df[t] = df[t].ffill()
+    # 平均カロリーは食事を記録した日だけで計算する（fillna(0) 後だと未記録日が 0kcal として平均に入る）
+    recorded_calories = df['calories'].dropna()
+    recorded_calories = recorded_calories[recorded_calories > 0]
     df = df.fillna(0)
 
     calories = df['calories'].tolist()
@@ -195,7 +198,7 @@ def compute(items: list[dict]) -> dict:
         'sma7_start_date': df['date'].iloc[0],
         'sma7_end_date':   df['date'].iloc[-1],
         'weight_diff':     float(round(sma7[0] - sma7[-1], 1)),
-        'avg_cal':         int(sum(calories) / len(calories)) if calories else 0,
+        'avg_cal':         int(recorded_calories.mean()) if len(recorded_calories) > 0 else 0,
         'record_days':     int(len(df)),
         'weight_min':      float(round(min(actual_weights) - 1, 1)) if actual_weights else 0.0,
         'weight_max':      float(round(max(actual_weights) + 1, 1)) if actual_weights else 100.0,

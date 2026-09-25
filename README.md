@@ -10,7 +10,7 @@ AWS Amplify Hosting + Lambda + DynamoDB + Cognito をベースとしたサーバ
 - **栄養素グラフ**：カロリー・タンパク質・脂質・炭水化物・糖質・食物繊維・塩分（各目安ライン付き）
 - **期間フィルター**：30日 / 90日 / 半年 / 1年 / 全期間
 - **レスポンシブ**：PC・スマホ対応
-- **Cognito 認証**：Google / Apple / Facebook / Amazon アカウントでサインイン
+- **Cognito 認証**：メールアドレス + パスワードでサインイン（Google / Apple / Facebook / Amazon は[オプション](#6-sns-idp-の追加オプション)）
 - **データ直接入力**：Web UI から体重・食事データを日付単位で追加・編集・削除
 - **CSV インポート / エクスポート**：一括データ移行対応
 
@@ -39,6 +39,7 @@ my-health-dashboard-aws/
 ├── backend/                    # Lambda バックエンド
 │   ├── common.py               # CORS ヘッダー・認証ユーティリティ
 │   ├── data_processor.py       # DynamoDB 読み書き・集計ロジック
+│   ├── tests/                  # compute() の単体テスト（pytest）
 │   ├── lambda/
 │   │   ├── data.py             # GET /api/data
 │   │   ├── entry.py            # POST/DELETE /api/entry
@@ -151,7 +152,7 @@ aws sts get-caller-identity
 
 ```bash
 # env.sh
-export AWS_PROFILE=root-admin
+export AWS_PROFILE=your-profile
 export AWS_PAGER=
 ```
 
@@ -159,20 +160,24 @@ export AWS_PAGER=
 
 必要な権限の目安（管理者ロール推奨）：`dynamodb:*` / `lambda:*` / `apigateway:*` / `cognito-idp:*` / `iam:CreateRole` / `cloudformation:*` / `s3:*`
 
-#### 必須環境変数
+#### 環境変数
 
-`cdk deploy` / `cdk destroy` の実行前に必ず設定すること。未設定の場合は CDK がエラーで停止する。
+`cdk deploy` / `cdk destroy` の実行前に設定する。
 
-| 変数 | 説明 | 例 |
-|---|---|---|
-| `GITHUB_TOKEN` | Amplify が GitHub リポジトリに接続するための Personal Access Token | `ghp_xxxx` |
-| `CUSTOM_DOMAIN` | アプリに使用するカスタムドメイン（`サブドメイン.ルートドメイン` 形式） | `your-subdomain.your-domain.com` |
+| 変数 | 必須 | 説明 | 例 |
+|---|---|---|---|
+| `GITHUB_TOKEN` | ✅ | Amplify が GitHub リポジトリに接続するための Personal Access Token | `ghp_xxxx` |
+| `GITHUB_REPO_URL` | | Amplify がビルドするリポジトリ。未設定なら `git remote get-url origin` から自動で決まる | `https://github.com/<owner>/my-health-dashboard-aws` |
+| `CUSTOM_DOMAIN` | | 独自ドメイン（`サブドメイン.ルートドメイン` 形式）。未設定なら Amplify のデフォルトドメイン（`https://main.<appId>.amplifyapp.com`）で公開される | `your-subdomain.your-domain.com` |
 
 ```bash
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+# 独自ドメインを使う場合のみ
 export CUSTOM_DOMAIN=your-subdomain.your-domain.com
 ```
 
+> **フォークして使う場合**: 自分の GitHub アカウントにフォークし、フォークしたリポジトリを clone して `cdk deploy` する。Amplify は origin リモートのリポジトリをビルドする。
+>
 > **CUSTOM_DOMAIN の前提**: 指定するドメインのルートゾーン（例: `your-domain.com`）を Route53 で管理していること。別 AWS アカウントの Route53 ホストゾーンでも利用可能。
 
 ### 1. GitHub Personal Access Token を用意する（初回のみ）
@@ -197,7 +202,7 @@ Amplify アプリ・Cognito・Lambda・DynamoDB・API Gateway がすべて一括
 
 ```bash
 export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
-export CUSTOM_DOMAIN=your-subdomain.your-domain.com
+export CUSTOM_DOMAIN=your-subdomain.your-domain.com   # 独自ドメインを使う場合のみ
 cd infrastructure
 npm install        # 初回のみ
 cdk bootstrap      # 初回のみ
@@ -208,7 +213,7 @@ cdk deploy
 
 ```
 Outputs:
-  HealthDashboardStack.AmplifyAppUrl    = https://your-subdomain.your-domain.com
+  HealthDashboardStack.AmplifyAppUrl    = https://your-subdomain.your-domain.com   # CUSTOM_DOMAIN 未設定なら https://main.<appId>.amplifyapp.com
   HealthDashboardStack.ApiEndpoint      = https://xxxxxxxxxx.execute-api.ap-northeast-1.amazonaws.com/prod/
   HealthDashboardStack.UserPoolId       = ap-northeast-1_xxxxxxxxx
   HealthDashboardStack.UserPoolClientId = xxxxxxxxxxxxxxxxxxxxxxxxxx
@@ -222,9 +227,13 @@ Amplify コンソール → `health-dashboard` → 「概要」→ `main` ブラ
 
 完了まで数分かかる。完了後は GitHub の `main` ブランチへの push で自動デプロイが有効になる。
 
-### 4. CNAME レコードを Route53 に追加（初回のみ）
+### 4. サインインするユーザーを作成する（初回のみ）
 
-デプロイ後、2 種類の CNAME レコードを Route53 に追加する必要がある。
+セルフサインアップは無効にしているため、最初のユーザーは管理者が作成する（手順は[管理者によるユーザー作成](#管理者によるユーザー作成)）。作成したメールアドレスと仮パスワードで `AmplifyAppUrl` にサインインする。
+
+### 5. CNAME レコードを Route53 に追加（`CUSTOM_DOMAIN` を設定した場合のみ・初回のみ）
+
+独自ドメインを使う場合は、デプロイ後に 2 種類の CNAME レコードを Route53 に追加する必要がある。
 
 #### 追加する CNAME レコード
 
@@ -244,7 +253,7 @@ Amplify コンソール → `health-dashboard` → 「概要」→ `main` ブラ
 
 #### Route53 への追加手順
 
-`your-domain.com` のホストゾーンがあるアカウント（`root-admin`）で操作する。
+`your-domain.com` のホストゾーンがあるアカウントのプロファイル（以下 `<hosted-zone-profile>`）で操作する。
 
 **レコード 1：ACM 証明書検証用**（ルートドメインに対して1回のみ）
 
@@ -262,7 +271,7 @@ aws route53 change-resource-record-sets \
       }
     }]
   }' \
-  --profile root-admin
+  --profile <hosted-zone-profile>
 ```
 
 **レコード 2：ドメイン向き先**（再デプロイで CloudFront が変わった場合は `UPSERT` で更新）
@@ -281,7 +290,7 @@ aws route53 change-resource-record-sets \
       }
     }]
   }' \
-  --profile root-admin
+  --profile <hosted-zone-profile>
 ```
 
 > **再デプロイ時の注意（特に cdk destroy → cdk deploy の場合）**:
@@ -302,7 +311,7 @@ Amplify コンソールの Domain management で **「Available」** と表示�
 
 ---
 
-### 4. SNS IdP の追加（オプション）
+### 6. SNS IdP の追加（オプション）
 
 各プロバイダーのデベロッパーコンソールで OAuth 認証情報を取得し、
 `infrastructure/lib/stack.ts` のコメントアウトを解除して再デプロイ：
@@ -313,6 +322,17 @@ Amplify コンソールの Domain management で **「Available」** と表示�
 | Apple | [Apple Developer](https://developer.apple.com/) |
 | Facebook | [Meta for Developers](https://developers.facebook.com/) |
 | Amazon | [Amazon Developer](https://developer.amazon.com/) |
+
+---
+
+## テスト
+
+集計ロジック（`backend/data_processor.py` の `compute()`）の単体テストがある。DynamoDB には接続しない。
+
+```bash
+pip install -r backend/requirements.txt pytest
+pytest backend/tests
+```
 
 ---
 
@@ -394,7 +414,7 @@ selfSignUpEnabled: true,
 
 ```bash
 export GITHUB_TOKEN=ghp_xxxx
-export CUSTOM_DOMAIN=your-subdomain.your-domain.com
+export CUSTOM_DOMAIN=your-subdomain.your-domain.com   # 独自ドメインを使う場合のみ
 cd infrastructure && cdk deploy --require-approval never
 ```
 
@@ -421,9 +441,10 @@ cdk destroy
 |---|---|---|
 | Amplify アプリ | ✅ | |
 | API Gateway | ✅ | |
-| Lambda × 4 | ✅ | |
+| Lambda × 8 | ✅ | API 用 5 本・認証トリガー 2 本・ログ転送 1 本 |
 | Cognito User Pool | ✅ | ユーザーアカウントも削除される |
-| DynamoDB | ✅ | データも削除される |
+| DynamoDB | ❌ 残る | 健康データを守るため `RETAIN`。不要なら `aws dynamodb delete-table --table-name health-entries` で手動削除する。**残したまま再デプロイすると同名テーブルが存在するためエラーになる** |
+| ログ保存用 S3 バケット | ❌ 残る | `RETAIN`。不要なら中身を空にしてから手動削除する |
 | CDK Bootstrap 用 S3 / ECR | 手動 | `CDKToolkit` スタックを別途削除 |
 
 > CDK Bootstrap リソースを削除したい場合：
@@ -456,8 +477,10 @@ cdk destroy
 |---|---|
 | Amplify Hosting | ~$0–1 |
 | Lambda + API Gateway | ~$0（無料枠内） |
-| DynamoDB | ~$0（25GB / 25WCU / 25RCU 永続無料枠） |
-| Cognito | ~$0（MAU 50,000 まで無料） |
+| DynamoDB | ~$0（オンデマンド。個人利用の読み書き量ならごくわずか） |
+| DynamoDB ポイントインタイムリカバリ | ~$0（テーブルサイズに比例。数 MB なら誤差） |
+| Cognito | ~$0（個人利用の MAU なら無料枠内） |
+| CloudWatch Logs / S3（ログ保存） | ~$0（個人利用のログ量なら数セント） |
 | **合計** | **~$0–数ドル/月** |
 
 ---
@@ -598,11 +621,13 @@ CDK デプロイ時に以下のクエリが自動登録されます。マネジ�
 | クエリ名 | 対象ロググループ | 内容 |
 |---|---|---|
 | `health-dashboard/api-access` | API Gateway | HTTP リクエスト一覧（メソッド・パス・ステータス・レスポンスサイズ・IP） |
-| `health-dashboard/lambda-access` | 全 Lambda | アクセスログ一覧（`type = "access"` のみ） |
-| `health-dashboard/lambda-errors` | 全 Lambda | エラーログ一覧（`type = "error"` のみ） |
 | `health-dashboard/auth-events` | PreAuth + PostAuth | 全認証イベント（試行・成功の両方） |
 | `health-dashboard/auth-attempt-stats` | PreAuth + PostAuth | ログイン試行の集計（5 分窓、username × 試行回数）。成功直前の試行も含む |
 | `health-dashboard/auth-successes` | PostAuth | ログイン成功のみ |
 
 > **5 分窓（`bin(5m)`）について**  
 > ログイベントを 5 分単位の時間枠でグループ化します。例えば 00:00〜00:05 の間に発生した 6 回の試行は、`bin = 00:00:00` の 1 行に `events = 6` としてまとめて表示されます。短時間に大量の試行が集中する brute force 攻撃の検知に適しています。
+
+## ライセンス
+
+[MIT License](LICENSE)
