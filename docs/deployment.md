@@ -34,12 +34,11 @@ aws sso login
 aws sts get-caller-identity
 ```
 
-`~/.zshrc` などグローバル設定を汚さずこのプロジェクトだけに閉じたい場合は、プロジェクト直下に `env.sh`（`.gitignore` 済み）を作り、ターミナルごとに `source env.sh` して読み込む。
+`~/.zshrc` などグローバル設定を汚さずこのプロジェクトだけに閉じたい場合は、テンプレートから `env.sh`（`.gitignore` 済み）を作り、ターミナルごとに `source env.sh` して読み込む。`AWS_PROFILE` / `AWS_PAGER` のほか、`GITHUB_TOKEN` や `CUSTOM_DOMAIN` もまとめて設定できる。
 
 ```bash
-# env.sh
-export AWS_PROFILE=your-profile
-export AWS_PAGER=
+cp env.sh.example env.sh   # 値を記入する
+source env.sh
 ```
 
 複数のターミナルアプリ（cmux / VS Code / Kiro のターミナルなど）から同じプロジェクトを触る場合も、それぞれで `source env.sh` すれば同じ設定になる。なお `aws sso login` 自体のトークンは `~/.aws/sso/cache/` にファイルとしてキャッシュされるため、シェルが違ってもログイン状態そのものは共有される。
@@ -168,9 +167,8 @@ selfSignUpEnabled: true,
 変更後に再デプロイ：
 
 ```bash
-export GITHUB_TOKEN=ghp_xxxx
-export CUSTOM_DOMAIN=your-subdomain.your-domain.com   # 独自ドメインを使う場合のみ
-cd infrastructure && cdk deploy --require-approval never
+source env.sh   # GITHUB_TOKEN・CUSTOM_DOMAIN など
+cd infrastructure && npx cdk deploy
 ```
 
 ### 管理者によるユーザー作成

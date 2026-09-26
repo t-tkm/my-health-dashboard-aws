@@ -40,12 +40,17 @@ AWS Amplify Hosting + Lambda + DynamoDB + Cognito のサーバーレス構成で
 | `GITHUB_REPO_URL` | | ビルドするリポジトリ。未設定なら `git remote get-url origin` |
 | `CUSTOM_DOMAIN` | | 独自ドメイン。未設定なら `https://main.<appId>.amplifyapp.com` で公開（設定方法は [docs/deployment.md](docs/deployment.md#独自ドメインcustom_domainの設定)） |
 
+`env.sh.example` をコピーした `env.sh`（`.gitignore` 済み）に書いておくと、ターミナルごとに `source env.sh` するだけで設定できる。`export` で直接設定してもよい。
+
+> ⚠️ 一度 `CUSTOM_DOMAIN` を設定してデプロイしたら、以降のデプロイでも必ず設定する。未設定のままデプロイすると Amplify から独自ドメインの設定が外れる。
+
 フォークして使う場合は、フォークしたリポジトリを clone してデプロイすれば Amplify はそのリポジトリをビルドする。
 
 ### 手順
 
 ```bash
-export GITHUB_TOKEN=ghp_xxxxxxxxxxxxxxxxxxxx
+cp env.sh.example env.sh   # 初回のみ。GITHUB_TOKEN などを記入する
+source env.sh
 cd infrastructure
 npm install
 npx cdk bootstrap   # 初回のみ
