@@ -275,8 +275,8 @@ def items_to_csv(items: list[dict]) -> str:
     return buf.getvalue()
 
 
-def import_csv_to_dynamo(user_id: str, file_storage) -> int:
-    """CSV ファイルを DynamoDB に一括インポートする。件数を返す。"""
+def _csv_to_items(user_id: str, file_storage) -> list[dict]:
+    """CSV を DynamoDB の item のリストに変換する（まだ書き込まない）。"""
     try:
         df = pd.read_csv(file_storage, encoding='utf-8-sig')
     except UnicodeDecodeError:
@@ -289,19 +289,55 @@ def import_csv_to_dynamo(user_id: str, file_storage) -> int:
 
     numeric_cols = [v for v in _CSV_TO_DB.values() if v != 'date']
 
+    items = []
+    for _, row in df.iterrows():
+        item = {'userId': user_id, 'date': row['date']}
+        for col in numeric_cols:
+            if col not in df.columns:
+                continue
+            val = row.get(col)
+            if pd.notna(val):
+                item[col] = _to_decimal(val)
+        if 'exercise' in df.columns:
+            val = row.get('exercise')
+            if pd.notna(val) and str(val).strip():
+                item['exercise'] = str(val).strip()
+        items.append(item)
+    return items
+
+
+def _load_dates(table, user_id: str) -> set[str]:
+    """ユーザの既存レコードの日付だけを返す。"""
+    kwargs = dict(KeyConditionExpression=Key('userId').eq(user_id),
+                  ProjectionExpression='#d', ExpressionAttributeNames={'#d': 'date'})
+    resp = table.query(**kwargs)
+    dates = {item['date'] for item in resp['Items']}
+    while 'LastEvaluatedKey' in resp:
+        resp = table.query(ExclusiveStartKey=resp['LastEvaluatedKey'], **kwargs)
+        dates.update(item['date'] for item in resp['Items'])
+    return dates
+
+
+def import_csv_to_dynamo(user_id: str, file_storage) -> dict:
+    """ユーザのデータを CSV の内容で置き換える（CSV をマスターとして扱う）。
+
+    CSV にある日付は上書きし、CSV にない日付は削除する。
+    途中で失敗しても既存データが先に消えないよう、書き込みを終えてから削除する。
+    """
+    items = _csv_to_items(user_id, file_storage)
+    if not items:
+        raise ValueError('CSV にデータ行がありません（既存データを消さないよう取り込みを中止しました）')
+    new_dates = [item['date'] for item in items]
+    if len(set(new_dates)) != len(new_dates):
+        raise ValueError('CSV に同じ日付の行が複数あります')
+
     table = _get_table()
+    stale = sorted(_load_dates(table, user_id) - set(new_dates))
+
     with table.batch_writer() as batch:
-        for _, row in df.iterrows():
-            item = {'userId': user_id, 'date': row['date']}
-            for col in numeric_cols:
-                if col not in df.columns:
-                    continue
-                val = row.get(col)
-                if pd.notna(val):
-                    item[col] = _to_decimal(val)
-            if 'exercise' in df.columns:
-                val = row.get('exercise')
-                if pd.notna(val) and str(val).strip():
-                    item['exercise'] = str(val).strip()
+        for item in items:
             batch.put_item(Item=item)
-    return len(df)
+    with table.batch_writer() as batch:
+        for date in stale:
+            batch.delete_item(Key={'userId': user_id, 'date': date})
+    return {'imported': len(items), 'deleted': len(stale)}

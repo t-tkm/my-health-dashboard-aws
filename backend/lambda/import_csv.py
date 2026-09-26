@@ -22,8 +22,8 @@ def handler(event, context):
         body = body.encode('utf-8')
 
     try:
-        count = import_csv_to_dynamo(user_id, io.BytesIO(body))
+        result = import_csv_to_dynamo(user_id, io.BytesIO(body))
     except Exception as e:
         return err(400, f'CSV インポートエラー: {e}', origin)
 
-    return ok({'imported': count}, origin)
+    return ok(result, origin)

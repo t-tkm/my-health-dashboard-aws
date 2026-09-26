@@ -4,11 +4,15 @@
     pip install -r backend/requirements.txt pytest
     pytest backend/tests
 """
+import io
 import os
 import sys
 
+import pytest
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
+import data_processor  # noqa: E402
 from data_processor import compute  # noqa: E402
 
 
@@ -58,3 +62,61 @@ def test_slope_is_none_until_enough_days():
     assert result['slope_dates'][:2] == ['2026-05-07', '2026-05-14']
     assert result['slope_values'][0] is None
     assert result['slope_values'][1] == -0.1
+
+
+class _FakeTable:
+    """import_csv_to_dynamo() が使う query / batch_writer だけを持つ DynamoDB テーブルの代役。"""
+
+    def __init__(self, dates):
+        self.items = {d: {'userId': 'u', 'date': d} for d in dates}
+
+    def query(self, **kwargs):
+        return {'Items': [{'date': d} for d in sorted(self.items)]}
+
+    def batch_writer(self):
+        table = self
+
+        class _Batch:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *exc):
+                return False
+
+            def put_item(self, Item):
+                table.items[Item['date']] = Item
+
+            def delete_item(self, Key):
+                table.items.pop(Key['date'], None)
+
+        return _Batch()
+
+
+def _csv(*dates):
+    rows = '\n'.join(f'{d},70.0' for d in dates)
+    return io.BytesIO(f'date,weight\n{rows}\n'.encode('utf-8'))
+
+
+def test_import_replaces_existing_data(monkeypatch):
+    # CSV をマスターとして扱う: CSV にない日付は消え、CSV の日付だけが残る
+    table = _FakeTable(['2026-03-31', '2026-04-01', '2026-09-30'])
+    monkeypatch.setattr(data_processor, '_get_table', lambda: table)
+    result = data_processor.import_csv_to_dynamo('u', _csv('2026/4/1', '2026/4/2'))
+    assert result == {'imported': 2, 'deleted': 2}
+    assert sorted(table.items) == ['2026-04-01', '2026-04-02']
+
+
+def test_import_rejects_empty_csv_without_deleting(monkeypatch):
+    table = _FakeTable(['2026-04-01'])
+    monkeypatch.setattr(data_processor, '_get_table', lambda: table)
+    with pytest.raises(ValueError):
+        data_processor.import_csv_to_dynamo('u', io.BytesIO(b'date,weight\n'))
+    assert sorted(table.items) == ['2026-04-01']
+
+
+def test_import_rejects_duplicate_dates(monkeypatch):
+    table = _FakeTable(['2026-04-01'])
+    monkeypatch.setattr(data_processor, '_get_table', lambda: table)
+    with pytest.raises(ValueError):
+        data_processor.import_csv_to_dynamo('u', _csv('2026/4/2', '2026/4/2'))
+    assert sorted(table.items) == ['2026-04-01']

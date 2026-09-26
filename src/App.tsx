@@ -59,12 +59,21 @@ function Dashboard() {
   async function handleCsvImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
+    // CSV をマスターとして扱うため、取り込みは置き換え（CSV にない日付は削除される）
+    if (data && !window.confirm(
+      `現在のデータを「${file.name}」の内容で置き換えます。\nCSV にない日付のデータは削除されます。続けますか？`,
+    )) {
+      e.target.value = '';
+      return;
+    }
     setImporting(true);
     try {
       const buf = await file.arrayBuffer();
       const res = await apiFetch('/api/import', { method: 'POST', body: buf,
         headers: { 'Content-Type': 'text/csv' } });
       if (!res.ok) throw new Error(await res.text());
+      const { imported, deleted } = await res.json() as { imported: number; deleted: number };
+      if (deleted > 0) alert(`${imported} 日分を取り込み、CSV にない ${deleted} 日分を削除しました`);
       refresh();
     } catch (err) {
       alert(`CSVインポートエラー: ${err}`);
@@ -116,7 +125,7 @@ function Dashboard() {
           <button className="btn btn-export" onClick={handleCsvExport} disabled={exporting}>{exporting ? 'エクスポート中...' : 'CSVエクスポート'}</button>
           <button className="btn btn-entry" onClick={() => setShowEntryForm(true)}>データを入力する</button>
           <label className="btn" style={{ cursor: 'pointer' }}>
-            {importing ? 'インポート中...' : 'CSVで更新する'}
+            {importing ? 'インポート中...' : 'CSVで置き換える'}
             <input type="file" accept=".csv" hidden onChange={handleCsvImport} disabled={importing} />
           </label>
           <LogDownload />
