@@ -165,7 +165,8 @@ function Dashboard() {
         )}
         <StatCard
           label="平均摂取カロリー"
-          value={`${filtered.avg_cal} kcal`}
+          // 期間内に食事の記録が1日もないと avg_cal は 0 になる。「0 kcal 食べた」と誤読されないよう表示を分ける
+          value={filtered.avg_cal > 0 ? `${filtered.avg_cal} kcal` : '記録なし'}
           color="#42b72a"
           sub={<span className="text-muted">目標: {data.cal_target[data.cal_target.length - 1] ?? 0} kcal</span>}
         />
