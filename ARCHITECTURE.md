@@ -146,7 +146,7 @@ my-health-dashboard-aws/
 | `entry.py` | POST | `/api/entry` | 1日分を追加・更新 → `compute()` → JSON |
 | `entry.py` | DELETE | `/api/entry` | 指定日を削除 → `compute()` → JSON |
 | `export.py` | GET | `/api/export` | 全レコード → CSV（Base64）ダウンロード |
-| `import_csv.py` | POST | `/api/import` | CSV バイナリ → DynamoDB 一括書き込み |
+| `import_csv.py` | POST | `/api/import` | CSV の内容でユーザのデータを置き換え（CSV にない日付は削除） |
 
 ### 認証フロー
 
@@ -163,7 +163,7 @@ put_entry(user_id, date, weight, ...) -> None        # PutItem（追加・更新
 delete_entry(user_id, date)           -> None        # DeleteItem
 compute(items)                        -> dict        # HealthData dict 生成
 items_to_csv(items)                   -> str         # CSV 文字列（UTF-8 BOM付き）
-import_csv_to_dynamo(user_id, file)   -> int         # CSV 一括インポート
+import_csv_to_dynamo(user_id, file)   -> dict        # CSV で置き換え {'imported', 'deleted'}
 ```
 
 ---
