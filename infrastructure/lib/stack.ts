@@ -10,6 +10,22 @@ import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 import * as path from 'path';
+import { execSync } from 'child_process';
+
+// Amplify が接続する GitHub リポジトリ URL。
+// GITHUB_REPO_URL が未設定なら、このリポジトリの origin リモートから導出する（フォークしたリポジトリをそのまま使えるように）。
+function resolveGithubRepoUrl(): string {
+  const fromEnv = process.env.GITHUB_REPO_URL;
+  if (fromEnv) return fromEnv.replace(/\.git$/, '');
+  try {
+    const origin = execSync('git remote get-url origin', { encoding: 'utf-8' }).trim();
+    const m = origin.match(/github\.com[:/](.+?)(?:\.git)?$/);
+    if (m) return `https://github.com/${m[1]}`;
+  } catch {
+    // git が使えない場合は下のエラーへ
+  }
+  throw new Error('環境変数 GITHUB_REPO_URL を設定してください（例: https://github.com/<owner>/my-health-dashboard-aws）');
+}
 
 export class HealthDashboardStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -19,6 +35,7 @@ export class HealthDashboardStack extends cdk.Stack {
     if (!githubToken) {
       throw new Error('環境変数 GITHUB_TOKEN を設定してください（GitHub Personal Access Token）');
     }
+    const githubRepoUrl = resolveGithubRepoUrl();
 
     // ------------------------------------------------------------------ S3 (log storage)
     const logBucket = new s3.Bucket(this, 'LogBucket', {
@@ -33,20 +50,21 @@ export class HealthDashboardStack extends cdk.Stack {
       partitionKey: { name: 'userId', type: dynamodb.AttributeType.STRING },
       sortKey:      { name: 'date',   type: dynamodb.AttributeType.STRING },
       billingMode:  dynamodb.BillingMode.PAY_PER_REQUEST,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      // 健康データを守るため、cdk destroy してもテーブルは残す（削除は手動で行う）
+      removalPolicy: cdk.RemovalPolicy.RETAIN,
+      // 誤操作に備えて直近 35 日間の任意の時点に復元できるようにする
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
     });
 
     // ------------------------------------------------------------------ Domain config
-    // CUSTOM_DOMAIN=your-subdomain.your-domain.com で独自ドメインを指定する（必須）
-    const customDomain = process.env.CUSTOM_DOMAIN;
-    if (!customDomain) {
-      throw new Error('環境変数 CUSTOM_DOMAIN を設定してください（例: your-subdomain.your-domain.com）');
-    }
+    // 任意: CUSTOM_DOMAIN=your-subdomain.your-domain.com で独自ドメインを指定する。
+    // 未設定なら Amplify のデフォルトドメイン（https://main.<appId>.amplifyapp.com）を使う。
+    const customDomain = process.env.CUSTOM_DOMAIN || undefined;
     // ------------------------------------------------------------------ Amplify App
     // GitHub Token は cdk deploy 前に export GITHUB_TOKEN=<PAT> で設定する
     const amplifyApp = new amplify.CfnApp(this, 'AmplifyApp', {
       name: 'health-dashboard',
-      repository: 'https://github.com/t-tkm/my-health-dashboard-aws',
+      repository: githubRepoUrl,
       oauthToken: githubToken,
       buildSpec: [
         'version: 1',
@@ -82,8 +100,13 @@ export class HealthDashboardStack extends cdk.Stack {
       enableAutoBuild: true,
     });
 
-    // Cognito callback URLs: localhost + custom domain + Amplify default domain (if provided)
-    const callbackUrls = ['http://localhost:5173', `https://${customDomain}`];
+    // アプリの URL。Cognito のコールバック URL と Lambda の CORS 許可オリジンに使う。
+    // Amplify のビルド用環境変数は AmplifyApp ではなく MainBranch に設定しているので、
+    // ここで AmplifyApp を参照しても循環依存にはならない。
+    const appUrl = customDomain
+      ? `https://${customDomain}`
+      : cdk.Fn.join('', ['https://main.', amplifyApp.attrDefaultDomain]);
+    const callbackUrls = ['http://localhost:5173', appUrl];
 
     // Optional: Custom domain — enable by setting CUSTOM_DOMAIN=<subdomain>.<rootdomain>
     // (e.g. CUSTOM_DOMAIN=your-subdomain.your-domain.com cdk deploy)
@@ -266,13 +289,15 @@ export class HealthDashboardStack extends cdk.Stack {
 
     // ------------------------------------------------------------------ Lambda log groups (set retention on existing groups)
     // LogRetention uses a Custom Resource to update retention without recreating existing log groups.
-    const lambdaNames = ['data', 'entry', 'export', 'importcsv', 'preauth', 'postauth'];
-    lambdaNames.forEach(name =>
-      new logs.LogRetention(this, `LambdaLogRetention-${name}`, {
+    // LogRetention はロググループが存在しなければ作成もする。
+    const lambdaNames = ['data', 'entry', 'export', 'importcsv', 'preauth', 'postauth', 'logshipper', 'logs'];
+    const lambdaLogRetentions: Record<string, logs.LogRetention> = {};
+    lambdaNames.forEach(name => {
+      lambdaLogRetentions[name] = new logs.LogRetention(this, `LambdaLogRetention-${name}`, {
         logGroupName: `/aws/lambda/health-dashboard-${name}`,
         retention: logs.RetentionDays.THREE_MONTHS,
-      }),
-    );
+      });
+    });
 
     // ------------------------------------------------------------------ CloudWatch Logs subscription filters → S3 (via log_shipper Lambda)
     // 転送対象: API GW アクセスログ + 認証前後トリガーの3グループのみ
@@ -281,11 +306,13 @@ export class HealthDashboardStack extends cdk.Stack {
       logs.LogGroup.fromLogGroupName(this, `LgShip-${i}`, `/aws/lambda/health-dashboard-${name}`),
     );
     ([apiAccessLogGroup, ...authShipLogGroups] as logs.ILogGroup[]).forEach((lg, i) => {
-      new logs.SubscriptionFilter(this, `LogShipFilter-${i}`, {
+      const filter = new logs.SubscriptionFilter(this, `LogShipFilter-${i}`, {
         logGroup: lg,
         destination: logShipDest,
         filterPattern: logs.FilterPattern.allEvents(),
       });
+      // 初回デプロイでは認証トリガーのロググループがまだ無いので、LogRetention が作成した後に設定する
+      if (i > 0) filter.node.addDependency(lambdaLogRetentions[['preauth', 'postauth'][i - 1]]);
     });
 
     // ------------------------------------------------------------------ CloudWatch Logs Insights saved queries
@@ -387,8 +414,9 @@ export class HealthDashboardStack extends cdk.Stack {
     apiRoot.addResource('import').addMethod('POST', new apigw.LambdaIntegration(fnImport), auth);
     apiRoot.addResource('logs').addMethod('GET',   new apigw.LambdaIntegration(fnLogs),   auth);
 
-    // Amplify 環境変数を CDK outputs から自動設定（循環依存を避けるため AmplifyApp → Api の一方向のみ）
-    amplifyApp.environmentVariables = [
+    // Amplify のビルド用環境変数を CDK から自動設定する。
+    // AmplifyApp に設定すると Cognito のコールバック URL（AmplifyApp のドメインを参照）と循環依存になるため、MainBranch に設定する。
+    mainBranch.environmentVariables = [
       { name: 'VITE_USER_POOL_ID',       value: userPool.userPoolId },
       { name: 'VITE_USER_POOL_CLIENT_ID', value: userPoolClient.userPoolClientId },
       { name: 'VITE_COGNITO_DOMAIN',      value: cognitoDomainUrl },
@@ -397,13 +425,17 @@ export class HealthDashboardStack extends cdk.Stack {
 
     // ------------------------------------------------------------------ Outputs
     new cdk.CfnOutput(this, 'AmplifyAppUrl', {
-      value: `https://${customDomain}`,
-      description: 'Custom domain URL - accessible after DNS CNAME is set (see README)',
+      value: appUrl,
+      description: customDomain
+        ? 'Custom domain URL - accessible after DNS CNAME is set (see README)'
+        : 'Amplify default domain URL',
     });
-    new cdk.CfnOutput(this, 'CustomDomainDnsSetup', {
-      value: `Check Amplify console > Domain management for required CNAME records, then add to Route53`,
-      description: `DNS setup required for custom domain (${customDomain}) - see README`,
-    });
+    if (customDomain) {
+      new cdk.CfnOutput(this, 'CustomDomainDnsSetup', {
+        value: `Check Amplify console > Domain management for required CNAME records, then add to Route53`,
+        description: `DNS setup required for custom domain (${customDomain}) - see README`,
+      });
+    }
     new cdk.CfnOutput(this, 'ApiEndpoint',      { value: api.url,                        exportName: 'ApiEndpoint' });
     new cdk.CfnOutput(this, 'UserPoolId',       { value: userPool.userPoolId,             exportName: 'UserPoolId' });
     new cdk.CfnOutput(this, 'UserPoolClientId', { value: userPoolClient.userPoolClientId, exportName: 'UserPoolClientId' });

@@ -13,6 +13,7 @@ export function filterData(data: HealthData, days: RangeDays): HealthData {
   const fW     = daily(data.weights);
   const fSma7  = daily(data.sma7);
   const fCals  = daily(data.calories);
+  const recordedCals = fCals.filter(c => c > 0);
   const fBf    = daily(data.body_fat_percents);
   const fBfSma = daily(data.sma7_body_fat);
 
@@ -67,7 +68,8 @@ export function filterData(data: HealthData, days: RangeDays): HealthData {
     sma7_start_date: fDates[0],
     sma7_end_date:   fDates[fDates.length - 1],
     weight_diff:     Math.round((sma7Start - sma7End) * 10) / 10,
-    avg_cal:    fCals.length > 0 ? Math.round(fCals.reduce((a, b) => a + b, 0) / fCals.length) : 0,
+    // 食事を記録していない日は calories が 0 で届くので、平均から除外する
+    avg_cal:    recordedCals.length > 0 ? Math.round(recordedCals.reduce((a, b) => a + b, 0) / recordedCals.length) : 0,
     record_days: fDates.length,
   };
 }

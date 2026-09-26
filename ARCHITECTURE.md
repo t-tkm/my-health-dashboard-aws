@@ -235,12 +235,13 @@ docker-compose
 
 | リソース | 設定 |
 |---|---|
-| DynamoDB | `health-entries`、PAY_PER_REQUEST、removalPolicy: DESTROY |
-| Lambda × 4 | Python 3.12 / **ARM_64**、`backend/` を Docker バンドル、タイムアウト 30s |
+| DynamoDB | `health-entries`、PAY_PER_REQUEST、removalPolicy: RETAIN、ポイントインタイムリカバリ有効 |
+| Lambda × 8 | API 用 5 本・Cognito 認証トリガー 2 本・ログ転送 1 本。Python 3.12 / **ARM_64**、`backend/` を Docker バンドル、タイムアウト 30s |
 | API Gateway | REST API、Cognito Authorizer、CORS（allowOrigins: \*） |
 | Cognito User Pool | email サインアップ、SNS IdP 対応（要 OAuth 認証情報）、removalPolicy: DESTROY |
 | Cognito Domain | `health-dashboard-{accountId}.auth.{region}.amazoncognito.com` |
-| Amplify Hosting | CfnApp + CfnBranch（GitHub 連携、自動ビルド）、SPA リライトルール付き |
+| Amplify Hosting | CfnApp + CfnBranch（GitHub 連携、自動ビルド）、SPA リライトルール付き。接続リポジトリは `GITHUB_REPO_URL` または origin リモート。`VITE_*` 環境変数は CfnBranch に設定（CfnApp に設定すると Cognito のコールバック URL と循環依存になるため）。`CUSTOM_DOMAIN` 設定時のみ CfnDomain を作成 |
+| S3（ログ保存） | `health-dashboard-logs-{accountId}`、removalPolicy: RETAIN、365 日で失効 |
 
 ---
 
@@ -258,7 +259,7 @@ docker-compose
 | `current_weight` | `float` | 最新の体重 |
 | `sma7_start` / `sma7_end` | `float` | 期間両端の SMA 値 |
 | `weight_diff` | `float` | `sma7_start − sma7_end`（正 = 減量） |
-| `avg_cal` | `int` | 平均摂取カロリー |
+| `avg_cal` | `int` | 平均摂取カロリー（食事を記録した日のみで計算） |
 | `record_days` | `int` | データ日数 |
 | `weight_min` / `weight_max` | `float` | グラフ Y 軸範囲（±1kg マージン付き） |
 
