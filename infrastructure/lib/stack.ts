@@ -31,10 +31,11 @@ export class HealthDashboardStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const githubToken = process.env.GITHUB_TOKEN;
-    if (!githubToken) {
-      throw new Error('環境変数 GITHUB_TOKEN を設定してください（GitHub Personal Access Token）');
-    }
+    // GitHub Personal Access Token は Secrets Manager に置き、テンプレートには動的参照だけを書く
+    // （値を直接渡すと、合成したテンプレートと CloudFormation 上のテンプレートに平文で残る）。
+    // シークレット名は GITHUB_TOKEN_SECRET_NAME で変えられる。
+    const githubTokenSecretName = process.env.GITHUB_TOKEN_SECRET_NAME || 'health-dashboard/github-token';
+    const githubToken = cdk.SecretValue.secretsManager(githubTokenSecretName);
     const githubRepoUrl = resolveGithubRepoUrl();
 
     // ------------------------------------------------------------------ S3 (log storage)
@@ -61,11 +62,11 @@ export class HealthDashboardStack extends cdk.Stack {
     // 未設定なら Amplify のデフォルトドメイン（https://main.<appId>.amplifyapp.com）を使う。
     const customDomain = process.env.CUSTOM_DOMAIN || undefined;
     // ------------------------------------------------------------------ Amplify App
-    // GitHub Token は cdk deploy 前に export GITHUB_TOKEN=<PAT> で設定する
+    // oauthToken は Webhook とデプロイキーの作成に使われるだけで、Amplify 側には保存されない
     const amplifyApp = new amplify.CfnApp(this, 'AmplifyApp', {
       name: 'health-dashboard',
       repository: githubRepoUrl,
-      oauthToken: githubToken,
+      oauthToken: githubToken.unsafeUnwrap(),  // 実体は {{resolve:secretsmanager:...}} の動的参照
       buildSpec: [
         'version: 1',
         'frontend:',
