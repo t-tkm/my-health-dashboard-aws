@@ -30,13 +30,13 @@ AWS Amplify Hosting + Lambda + DynamoDB + Cognito のサーバーレス構成で
 
 - AWS CLI の認証が通っていること（SSO の場合は [docs/deployment.md](docs/deployment.md#aws-sso-を使う場合)）
 - Node.js と Docker（Lambda の依存ライブラリのビルドに使う）
-- GitHub Personal Access Token（scope: `repo`, `admin:repo_hook`。作り方は [docs/deployment.md](docs/deployment.md#github-personal-access-token-の作成)）
+- GitHub Personal Access Token（scope: `repo`, `admin:repo_hook`）を Secrets Manager に登録済みであること（作り方と登録手順は [docs/deployment.md](docs/deployment.md#github-personal-access-token-の作成と登録)）
 
 ### 環境変数
 
 | 変数 | 必須 | 説明 |
 |---|---|---|
-| `GITHUB_TOKEN` | ✅ | Amplify が GitHub に接続するための PAT |
+| `GITHUB_TOKEN_SECRET_NAME` | | PAT を登録した Secrets Manager のシークレット名。未設定なら `health-dashboard/github-token` |
 | `GITHUB_REPO_URL` | | ビルドするリポジトリ。未設定なら `git remote get-url origin` |
 | `CUSTOM_DOMAIN` | | 独自ドメイン。未設定なら `https://main.<appId>.amplifyapp.com` で公開（設定方法は [docs/deployment.md](docs/deployment.md#独自ドメインcustom_domainの設定)） |
 
@@ -49,7 +49,7 @@ AWS Amplify Hosting + Lambda + DynamoDB + Cognito のサーバーレス構成で
 ### 手順
 
 ```bash
-cp env.sh.example env.sh   # 初回のみ。GITHUB_TOKEN などを記入する
+cp env.sh.example env.sh   # 初回のみ。AWS_PROFILE などを記入する
 source env.sh
 cd infrastructure
 npm install
@@ -99,7 +99,7 @@ cd infrastructure && npx cdk destroy
 | ファイル | 内容 |
 |---|---|
 | [ARCHITECTURE.md](ARCHITECTURE.md) | 構成図、ディレクトリ構成、DynamoDB 設計、API |
-| [docs/deployment.md](docs/deployment.md) | PAT 作成、AWS SSO、独自ドメイン、SNS IdP、ユーザー管理 |
+| [docs/deployment.md](docs/deployment.md) | PAT 作成と Secrets Manager への登録、AWS SSO、独自ドメイン、SNS IdP、ユーザー管理 |
 | [docs/data.md](docs/data.md) | CSV 形式、ダミー CSV 生成、既存データの移行 |
 | [docs/logging.md](docs/logging.md) | ログ構造と CloudWatch Logs Insights の保存済みクエリ |
 

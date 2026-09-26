@@ -2,9 +2,11 @@
 
 README の「AWS へのデプロイ」を補足する手順集。
 
-## GitHub Personal Access Token の作成
+## GitHub Personal Access Token の作成と登録
 
-CDK が Amplify と GitHub を連携するために PAT が必要。
+CDK が Amplify と GitHub を連携するために PAT が必要。PAT は Secrets Manager に置き、CloudFormation テンプレートには動的参照（`{{resolve:secretsmanager:...}}`）だけを書く。環境変数で直接渡すと、合成したテンプレート（`cdk.out/`）と CloudFormation 上のテンプレートに平文で残るため。
+
+### 作成
 
 1. GitHub にログイン
 2. 右上アイコン → **Settings**
@@ -16,6 +18,25 @@ CDK が Amplify と GitHub を連携するために PAT が必要。
    - Expiration: 任意
    - Scope: **`repo`** と **`admin:repo_hook`** にチェック（Amplify が webhook を作成するために必要）
 7. 表示されたトークン（`ghp_xxx...`）をコピー（この画面を閉じると二度と表示されない）
+
+### Secrets Manager に登録（初回のみ）
+
+```bash
+source env.sh
+read -rs GITHUB_TOKEN   # トークンを貼り付けて Enter（画面には表示されない）
+aws secretsmanager create-secret --name health-dashboard/github-token --secret-string "$GITHUB_TOKEN"
+unset GITHUB_TOKEN
+```
+
+シークレット 1 つにつき月 $0.40 かかる。別の名前で登録した場合は `GITHUB_TOKEN_SECRET_NAME` にその名前を設定する。
+
+### トークンの入れ替え
+
+Amplify はトークンを Webhook とデプロイキーの作成に使うだけで保存しないため、アプリ作成後に古いトークンを無効化してもビルドは止まらない。ただし `cdk deploy` のたびに CloudFormation がシークレットを参照するので、期限切れのトークンを入れ替えるときは次の順で行う。
+
+1. GitHub で新しいトークンを作る
+2. `aws secretsmanager put-secret-value --secret-id health-dashboard/github-token --secret-string "$GITHUB_TOKEN"`（`read -rs` で読み込んでから）
+3. GitHub で古いトークンを削除する
 
 ## AWS SSO を使う場合
 
@@ -34,7 +55,7 @@ aws sso login
 aws sts get-caller-identity
 ```
 
-`~/.zshrc` などグローバル設定を汚さずこのプロジェクトだけに閉じたい場合は、テンプレートから `env.sh`（`.gitignore` 済み）を作り、ターミナルごとに `source env.sh` して読み込む。`AWS_PROFILE` / `AWS_PAGER` のほか、`GITHUB_TOKEN` や `CUSTOM_DOMAIN` もまとめて設定できる。
+`~/.zshrc` などグローバル設定を汚さずこのプロジェクトだけに閉じたい場合は、テンプレートから `env.sh`（`.gitignore` 済み）を作り、ターミナルごとに `source env.sh` して読み込む。`AWS_PROFILE` / `AWS_PAGER` のほか、`CUSTOM_DOMAIN` もまとめて設定できる（GitHub のトークンは Secrets Manager に置くので書かない）。
 
 ```bash
 cp env.sh.example env.sh   # 値を記入する
@@ -167,7 +188,7 @@ selfSignUpEnabled: true,
 変更後に再デプロイ：
 
 ```bash
-source env.sh   # GITHUB_TOKEN・CUSTOM_DOMAIN など
+source env.sh   # AWS_PROFILE・CUSTOM_DOMAIN など
 cd infrastructure && npx cdk deploy
 ```
 
