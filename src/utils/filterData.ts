@@ -27,8 +27,10 @@ export function filterData(data: HealthData, days: RangeDays): HealthData {
   const currentBf     = validBf.length > 0 ? validBf[validBf.length - 1] : null;
   const firstBfSmaIdx = fBfSma.findIndex(v => v !== null);
   const lastBfSmaIdx  = fBfSma.reduce<number>((acc, v, i) => v !== null ? i : acc, -1);
-  const bfSmaStart    = firstBfSmaIdx >= 0 ? (fBfSma[firstBfSmaIdx] as number) : null;
-  const bfSmaEnd      = lastBfSmaIdx  >= 0 ? (fBfSma[lastBfSmaIdx]  as number) : null;
+  // 体重の sma7_start/end と同じく小数1桁に丸める（SMA は小数2桁で届く）
+  const round1        = (v: number) => Math.round(v * 10) / 10;
+  const bfSmaStart    = firstBfSmaIdx >= 0 ? round1(fBfSma[firstBfSmaIdx] as number) : null;
+  const bfSmaEnd      = lastBfSmaIdx  >= 0 ? round1(fBfSma[lastBfSmaIdx]  as number) : null;
 
   return {
     ...data,

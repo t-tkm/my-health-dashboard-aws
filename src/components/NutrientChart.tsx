@@ -3,7 +3,7 @@ import {
   ComposedChart, Bar, Cell, Line, XAxis, YAxis, Tooltip, Legend,
   CartesianGrid, ResponsiveContainer,
 } from 'recharts';
-import { formatTick } from '../utils/dateFormat';
+import { formatTick, formatTooltipDate } from '../utils/dateFormat';
 
 interface Props {
   dates: string[];
@@ -31,7 +31,7 @@ const NutrientChart = memo(function NutrientChart({ dates, values, target, unit,
         <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
         <XAxis dataKey="date" angle={-45} textAnchor="end" tick={{ fontSize: 10 }} interval={xInterval} height={50} tickFormatter={fmt} />
         <YAxis domain={[0, 'auto']} tick={{ fontSize: 11 }} width={44} />
-        <Tooltip formatter={(v: number, name: string) => [`${v} ${unit}`, name]} labelFormatter={fmt} />
+        <Tooltip formatter={(v: number, name: string) => [`${v} ${unit}`, name]} labelFormatter={formatTooltipDate} />
         <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 4 }} />
         <Bar
           dataKey="value"
