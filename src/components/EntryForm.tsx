@@ -34,6 +34,11 @@ function numStr(v: number | null | undefined): string {
   return v != null ? String(v) : '';
 }
 
+/** 栄養素用: API は未記録の日を 0 で返すので、0 は空欄として扱う（そのまま保存すると 0 が記録されてしまう） */
+function nutritionStr(v: number | null | undefined): string {
+  return v ? String(v) : '';
+}
+
 function valuesForDate(data: HealthData | null, date: string): Omit<FormState, 'date'> {
   const blank = { weight: '', body_fat_percent: '', ...EMPTY_NUTRITION, exercise: '' };
   if (!data) return blank;
@@ -43,13 +48,13 @@ function valuesForDate(data: HealthData | null, date: string): Omit<FormState, '
   return {
     weight:           numStr(data.weights[idx]),
     body_fat_percent: bf !== null ? numStr(bf) : '',
-    calories:         numStr(data.calories[idx]),
-    protein_g:        numStr(data.protein_gram[idx]),
-    fat_g:            numStr(data.fat_gram[idx]),
-    carb_g:           numStr(data.carb_gram[idx]),
-    sugar_g:          numStr(data.sugar_gram[idx]),
-    fiber_g:          numStr(data.fiber_gram[idx]),
-    salt_g:           numStr(data.salt_gram[idx]),
+    calories:         nutritionStr(data.calories[idx]),
+    protein_g:        nutritionStr(data.protein_gram[idx]),
+    fat_g:            nutritionStr(data.fat_gram[idx]),
+    carb_g:           nutritionStr(data.carb_gram[idx]),
+    sugar_g:          nutritionStr(data.sugar_gram[idx]),
+    fiber_g:          nutritionStr(data.fiber_gram[idx]),
+    salt_g:           nutritionStr(data.salt_gram[idx]),
     exercise:         data.exercises[idx] ?? '',
   };
 }
