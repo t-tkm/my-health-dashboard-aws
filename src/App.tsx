@@ -11,6 +11,7 @@ import SlopeChart from './components/SlopeChart';
 import NutrientChart from './components/NutrientChart';
 import EmptyState from './components/EmptyState';
 import EntryForm from './components/EntryForm';
+import ImportConfirmDialog from './components/ImportConfirmDialog';
 import LogDownload from './components/LogDownload';
 
 function useIsMobile(breakpoint = 600) {
@@ -31,8 +32,10 @@ function Dashboard() {
   const [showEntryForm, setShowEntryForm] = useState(false);
   const [importing, setImporting] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [pendingImport, setPendingImport] = useState<File | null>(null);
 
-  async function handleCsvExport() {
+  /** 現在のデータを CSV でダウンロードする。成功したら true */
+  async function handleCsvExport(): Promise<boolean> {
     setExporting(true);
     try {
       const res = await apiFetch('/api/export');
@@ -44,8 +47,10 @@ function Dashboard() {
       a.download = nextCsvExportFilename();
       a.click();
       URL.revokeObjectURL(url);
+      return true;
     } catch (err) {
       alert(`CSVエクスポートエラー: ${err}`);
+      return false;
     } finally {
       setExporting(false);
     }
@@ -56,16 +61,17 @@ function Dashboard() {
     [data, range],
   );
 
-  async function handleCsvImport(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleCsvFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    e.target.value = '';  // 同じファイルを選び直しても onChange が発火するように
     if (!file) return;
-    // CSV をマスターとして扱うため、取り込みは置き換え（CSV にない日付は削除される）
-    if (data && !window.confirm(
-      `現在のデータを「${file.name}」の内容で置き換えます。\nCSV にない日付のデータは削除されます。続けますか？`,
-    )) {
-      e.target.value = '';
-      return;
-    }
+    // CSV をマスターとして扱うため、取り込みは置き換え（CSV にない日付は削除される）。
+    // 消えるデータがあるときだけ確認し、その場でバックアップできるようにする
+    if (data) setPendingImport(file);
+    else void importCsv(file);
+  }
+
+  async function importCsv(file: File) {
     setImporting(true);
     try {
       const buf = await file.arrayBuffer();
@@ -79,8 +85,14 @@ function Dashboard() {
       alert(`CSVインポートエラー: ${err}`);
     } finally {
       setImporting(false);
-      e.target.value = '';
+      setPendingImport(null);
     }
+  }
+
+  async function backupAndImport(file: File) {
+    // バックアップに失敗したら置き換えない（バックアップなしで消えるのを防ぐ）
+    if (!(await handleCsvExport())) return;
+    await importCsv(file);
   }
 
   if (loading) return <div className="center-message">読み込み中...</div>;
@@ -96,7 +108,7 @@ function Dashboard() {
           <button className="btn btn-entry" onClick={() => setShowEntryForm(true)}>データを入力する</button>
           <label className="btn" style={{ cursor: 'pointer' }}>
             {importing ? 'インポート中...' : 'CSVをインポートする'}
-            <input type="file" accept=".csv" hidden onChange={handleCsvImport} disabled={importing} />
+            <input type="file" accept=".csv" hidden onChange={handleCsvFileSelected} disabled={importing} />
           </label>
           <button className="btn" onClick={signOut} title={user?.signInDetails?.loginId}>ログアウト</button>
         </div>
@@ -119,14 +131,23 @@ function Dashboard() {
       {showEntryForm && (
         <EntryForm data={data} onClose={() => setShowEntryForm(false)} onSaved={refresh} />
       )}
+      {pendingImport && (
+        <ImportConfirmDialog
+          fileName={pendingImport.name}
+          busy={importing || exporting}
+          onBackupAndImport={() => void backupAndImport(pendingImport)}
+          onImport={() => void importCsv(pendingImport)}
+          onCancel={() => setPendingImport(null)}
+        />
+      )}
       <header className="header">
         <h1>健康管理分析ダッシュボード</h1>
         <div className="header-actions">
-          <button className="btn btn-export" onClick={handleCsvExport} disabled={exporting}>{exporting ? 'エクスポート中...' : 'CSVエクスポート'}</button>
+          <button className="btn btn-export" onClick={() => void handleCsvExport()} disabled={exporting}>{exporting ? 'エクスポート中...' : 'CSVエクスポート'}</button>
           <button className="btn btn-entry" onClick={() => setShowEntryForm(true)}>データを入力する</button>
           <label className="btn" style={{ cursor: 'pointer' }}>
             {importing ? 'インポート中...' : 'CSVで置き換える'}
-            <input type="file" accept=".csv" hidden onChange={handleCsvImport} disabled={importing} />
+            <input type="file" accept=".csv" hidden onChange={handleCsvFileSelected} disabled={importing} />
           </label>
           <LogDownload />
           <button className="btn" onClick={signOut} title={user?.signInDetails?.loginId}>ログアウト</button>

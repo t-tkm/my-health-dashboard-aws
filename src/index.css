@@ -167,6 +167,19 @@ body {
 .btn-save:hover:not(:disabled) { background: #166fe5; }
 .btn-save:disabled { opacity: 0.6; cursor: not-allowed; }
 
+/* CSV 置き換えの確認 */
+.import-confirm {
+  padding: 16px 24px 24px;
+  font-size: 0.92rem;
+  line-height: 1.7;
+}
+.import-confirm p + p { margin-top: 12px; }
+.import-confirm-actions { flex-wrap: wrap; }
+@media (max-width: 480px) {
+  .import-confirm-actions { flex-direction: column-reverse; }
+  .import-confirm-actions .btn { width: 100%; }
+}
+
 @media (max-width: 480px) {
   .form-row { grid-template-columns: 1fr; }
 }
