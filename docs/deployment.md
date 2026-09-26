@@ -32,11 +32,24 @@ unset GITHUB_TOKEN
 
 ### トークンの入れ替え
 
-Amplify はトークンを Webhook とデプロイキーの作成に使うだけで保存しないため、アプリ作成後に古いトークンを無効化してもビルドは止まらない。ただし `cdk deploy` のたびに CloudFormation がシークレットを参照するので、期限切れのトークンを入れ替えるときは次の順で行う。
+Amplify はビルドのたびにこのトークンでリポジトリを取得する（`aws amplify get-app --app-id <AppId> --query app.repositoryCloneMethod` が `TOKEN`）。**トークンの有効期限が切れるとビルドが失敗する**ので、期限が来る前に次の順で入れ替える。
 
-1. GitHub で新しいトークンを作る
-2. `aws secretsmanager put-secret-value --secret-id health-dashboard/github-token --secret-string "$GITHUB_TOKEN"`（`read -rs` で読み込んでから）
-3. GitHub で古いトークンを削除する
+また、CloudFormation はシークレットの値が変わっただけでは Amplify アプリを更新しないため、新しいトークンはアプリにも直接渡す。
+
+```bash
+source env.sh
+read -rs GITHUB_TOKEN   # 1. GitHub で作った新しいトークンを貼り付けて Enter
+aws secretsmanager put-secret-value --secret-id health-dashboard/github-token --secret-string "$GITHUB_TOKEN"   # 2. シークレットを更新
+aws amplify update-app --app-id <AppId> --oauth-token "$GITHUB_TOKEN"   # 3. アプリに新しいトークンを渡す
+unset GITHUB_TOKEN
+```
+
+4. Amplify コンソールで main を再デプロイし（または `aws amplify start-job --app-id <AppId> --branch-name main --job-type RELEASE`）、ビルドが成功することを確認する
+5. GitHub で古いトークンを削除し、もう一度ビルドが成功することを確認する
+
+`<AppId>` は `cdk deploy` の出力 `AmplifyAccessLogs` の URL（`.../apps/<AppId>/accesslogs`）か、`aws amplify list-apps` で確認できる。
+
+> 補足: 以前は Amplify がトークンで読み取り専用のデプロイキー（SSH）を作って取得していたが、トークンを Secrets Manager 経由に切り替えて `cdk deploy` した時点で、取得方式が `TOKEN` に変わり、デプロイキーは削除された。
 
 ## AWS SSO を使う場合
 
