@@ -98,13 +98,17 @@ def _items_to_df(items: list[dict]) -> pd.DataFrame:
     return df
 
 
-def _rolling_slope(series: pd.Series, window: int = 30) -> list:
+def _rolling_slope(series: pd.Series, window: int = 30, min_points: int = 14) -> list:
+    """直近 window 日の線形回帰の傾きを日ごとに返す。
+
+    記録開始直後は数日分の点で傾きを出すと大きく振れるため、min_points 日分そろうまでは None にする。
+    """
     slopes = []
     arr = series.values
     for i in range(len(arr)):
         start = max(0, i - window + 1)
         y = arr[start: i + 1]
-        if len(y) < 2:
+        if len(y) < min_points:
             slopes.append(None)
         else:
             x = np.arange(len(y))
