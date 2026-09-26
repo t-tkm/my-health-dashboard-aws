@@ -49,6 +49,12 @@ python scripts/generate_dummy_csv.py --days 90 --out test_data.csv
 | `--weight-start` | `80.0` | 開始体重（kg） |
 | `--weight-end` | `73.5` | 終了体重（kg） |
 
+## ブログ記事のサンプルデータ
+
+`sample/dummy_health_data_202604-202609.csv` は、ブログ記事のスクリーンショットで使ったダミーデータ（2026/4/1〜2026/9/30）。値はすべて乱数で、実データは含まない。「CSVで置き換える」でそのまま取り込める。
+
+`sample/generate_blog_sample.py` を実行すると同じ CSV を再生成できる（乱数シード固定、標準ライブラリのみ）。
+
 ## 既存 CSV データの移行
 
 Render 版から移行する場合、`migrate_csv_to_dynamodb.py` を使う：
