@@ -49,3 +49,12 @@ def test_body_fat_sma_is_not_contaminated_by_missing_days():
     result = compute(items)
     assert result['body_fat_percents'] == [20.0, None, 22.0]
     assert result['sma7_body_fat'][-1] == 21.0
+
+
+def test_slope_is_none_until_enough_days():
+    # 記録開始から 14 日分そろうまでは傾きを出さない（数日分の回帰で大きく振れるのを防ぐ）
+    items = [_item(d, weight=70.0 - 0.1 * d) for d in range(1, 21)]
+    result = compute(items)
+    assert result['slope_dates'][:2] == ['2026-05-07', '2026-05-14']
+    assert result['slope_values'][0] is None
+    assert result['slope_values'][1] == -0.1
