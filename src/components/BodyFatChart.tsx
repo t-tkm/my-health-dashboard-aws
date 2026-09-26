@@ -4,7 +4,7 @@ import {
   CartesianGrid, ResponsiveContainer, Brush, ReferenceLine,
 } from 'recharts';
 import { HealthData } from '../types';
-import { formatTick, getYearStarts } from '../utils/dateFormat';
+import { formatTick, formatTooltipDate, formatOneDecimal, getYearStarts } from '../utils/dateFormat';
 
 interface Props {
   data: HealthData;
@@ -48,7 +48,7 @@ const BodyFatChart = memo(function BodyFatChart({ data, height = 350, xInterval 
           tickFormatter={fmt}
         />
         <YAxis domain={[bfMin, bfMax]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11 }} width={52} />
-        <Tooltip formatter={(v: number, name: string) => [`${v} %`, name]} labelFormatter={fmt} />
+        <Tooltip formatter={(v: number, name: string) => [`${formatOneDecimal(v)} %`, name]} labelFormatter={formatTooltipDate} />
         <Legend verticalAlign="top" wrapperStyle={{ paddingBottom: 4 }} />
 
         {yearStarts.map(d => (
